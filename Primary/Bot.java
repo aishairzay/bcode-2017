@@ -21,16 +21,18 @@ public strictfp abstract class Bot {
 	protected Direction[] directions = new Direction[8];
 	protected MapLocation[] allyArchons;
 	protected MapLocation[] enemyArchons;
-	
+	protected Direction unexploredDir;
+
 	public Bot(RobotController rc) {
 		this.rc = rc;
-		rand = new Random(rc.getID() + (int)(Math.random() * 100));
+		rand = new Random(rc.getID() + (int) (Math.random() * 100));
+		unexploredDir = this.getRandomDirection();
 		myTeam = this.rc.getTeam();
 		enemyTeam = myTeam.opponent();
 		myType = rc.getType();
 		Direction dir = Direction.getWest();
 		int rotation = 45;
-		for (int i = 0; i < 8; i++,rotation+=45) {
+		for (int i = 0; i < 8; i++, rotation += 45) {
 			directions[i] = dir.rotateRightDegrees(rotation);
 		}
 
@@ -39,59 +41,63 @@ public strictfp abstract class Bot {
 	}
 
 	public abstract void run() throws GameActionException;
-	
-	
+
 	public Direction getRandomDirection() {
 		return directions[rand.nextInt(directions.length)];
 	}
-	
-	
+
 	protected MapLocation dest = null;
+
 	protected void setDestination(MapLocation loc) {
 		this.dest = loc;
 	}
+
 	protected void bug() {
-		
+
 	}
+
 	protected void moveTowards() {
-		
+
 	}
-	
+
 	protected void shake() throws GameActionException {
+		boolean isArchon = false;
+		if (rc.getType().equals(RobotType.ARCHON)) {
+			isArchon = true;
+			System.out.println("Archon is shaking now!");
+		}
 		if (rc.canShake()) {
-			TreeInfo[] trees = rc.senseNearbyTrees(rc.getType().strideRadius);
-		
+			TreeInfo[] trees = rc.senseNearbyTrees(rc.getType().strideRadius, Team.NEUTRAL);
 			for (TreeInfo tree : trees) {
+				System.out.println("my stride radius: " + myType.strideRadius+ ", tree radius: " + tree.radius);
 				if (rc.canShake(tree.ID)) {
 					rc.shake(tree.ID);
-					rc.broadcast(this.getLocChannel(tree.location), 1);
+					int channel = this.getTreeChannel(tree.ID);
+					rc.broadcast(channel, 1);
+					System.out.println("Just broadcasted here! " + this.getTreeChannel(tree.ID));
 					break;
 				}
 			}
 		}
 	}
-	
+
 	// This method attempts to make a move
 	// To the best square that will take the least amount of damage from bullets
 	// returns true if a move was made to minimize bullet damage
 	// returns false if a move was not made
 	protected int[] getBulletDamagesByMoveLocs(BulletInfo[] bullets) {
-		/*int[] directionScores = new int[9];
-		int[] allDirections = new int[8];
-		float myHealth = rc.getHealth();
-		for (int i = 0; i < directionScores.length; i++) {
-			Direction dir = directionFromIndex(i);
-			if (!rc.canMove(dir)) {
-				continue;
-			}
-			for (int j = 0; j < bullets.length; j++) {
-
-			}
-		}
-		return directionScores;*/
+		/*
+		 * int[] directionScores = new int[9]; int[] allDirections = new int[8];
+		 * float myHealth = rc.getHealth(); for (int i = 0; i <
+		 * directionScores.length; i++) { Direction dir = directionFromIndex(i);
+		 * if (!rc.canMove(dir)) { continue; } for (int j = 0; j <
+		 * bullets.length; j++) {
+		 * 
+		 * } } return directionScores;
+		 */
 		return null;
 	}
-	
+
 	protected int indexFromDirection(Direction direction) {
 		Direction dir = Direction.getWest();
 		for (int i = 0; i < 8; i++) {
@@ -101,50 +107,97 @@ public strictfp abstract class Bot {
 			dir = dir.rotateRightDegrees(45);
 		}
 		return 8;
-		
+
 	}
+
 	protected Direction directionFromIndex(int index) {
 		if (index >= 0 && index < 8) {
-			
+
 		}
 		return null;
 	}
 
-    protected int getLocChannel(MapLocation loc)
-    {
-        return (3 * (Math.abs((int)loc.x + 1) * 1000))
-            ^ (7 * Math.abs((int)loc.y + 1) * 10);
-    }
-    
-    void makeMove(Direction dir) throws GameActionException {
-    	if (rc.hasMoved()) {
-    		return;
-    	}
-    	Direction rotation = dir;
-    	int i = 0;
-    	int leftAngle = 45;
-    	int rightAngle = 45;
-    	boolean left = rand.nextBoolean();
-    	while(true) {
-    		if (rc.canMove(rotation)) {
-    			break;
-    		}
-    		if (i >= 8) {
-    			break;
-    		}
-    		i++;
-    		if (left) {
-        		rotation = dir.rotateLeftDegrees(leftAngle);
-        		leftAngle += 45;
-    		} else {
-    			rotation = dir.rotateRightDegrees(rightAngle);
-    			rightAngle += 45;
-    		}
-    		left = !left;
-    	}
-    	if (rc.canMove(rotation)) {
-    		rc.move(rotation);
-    	}
-    }
-	
+	protected int getTreeChannel(int treeId) {
+		return 1000 + treeId;
+	}
+
+	protected int getLocChannel(MapLocation loc) {
+		return (3 * (Math.abs((int) loc.x + 1) * 1000)) ^ (7 * Math.abs((int) loc.y + 1) * 10);
+	}
+
+	void makeMove(Direction dir) throws GameActionException {
+		if (rc.hasMoved()) {
+			return;
+		}
+		Direction rotation = dir;
+		int i = 0;
+		int leftAngle = 45;
+		int rightAngle = 45;
+		boolean left = rand.nextBoolean();
+		while (true) {
+			if (rc.canMove(rotation)) {
+				break;
+			}
+			if (i >= 8) {
+				break;
+			}
+			i++;
+			if (left) {
+				rotation = dir.rotateLeftDegrees(leftAngle);
+				leftAngle += 45;
+			} else {
+				rotation = dir.rotateRightDegrees(rightAngle);
+				rightAngle += 45;
+			}
+			left = !left;
+		}
+		if (rc.canMove(rotation)) {
+			rc.move(rotation);
+		}
+	}
+
+	protected void moveTowardsUnshookTrees() throws GameActionException {
+		TreeInfo[] trees = rc.senseNearbyTrees(myType.sensorRadius, Team.NEUTRAL);
+		TreeInfo closest = null;
+		for (TreeInfo tree : trees) {
+			if (myType != RobotType.SCOUT && myType.strideRadius < tree.radius) {
+				continue;
+			}
+			int broadcast = rc.readBroadcast(this.getTreeChannel(tree.ID));
+			System.out.println("Got broadcast for " + this.getTreeChannel(tree.ID) + ", it is: " + broadcast);
+			boolean visited = rc.readBroadcast(this.getTreeChannel(tree.ID)) > 0;
+			if (visited) {
+				continue;
+			}
+			if (closest == null) {
+				closest = tree;
+			} else if (rc.getLocation().distanceSquaredTo(tree.location) < rc.getLocation()
+					.distanceSquaredTo(closest.location)) {
+				closest = tree;
+			}
+		}
+		if (closest == null) {
+			return;
+		}
+		Direction dir = rc.getLocation().directionTo(closest.location);
+		makeMove(dir);
+		rc.setIndicatorLine(rc.getLocation(), closest.location, 200, 0, 0);
+	}
+
+	protected void moveInUnexploredDirection(int tries) throws GameActionException {
+		if (tries == 8) {
+			return;
+		}
+		// Store a list of all directions we have explored
+		// Mark direction as explored once we hit a wall.
+		if (unexploredDir == null) {
+			unexploredDir = getRandomDirection();
+		}
+		if (rc.canMove(unexploredDir)) {
+			makeMove(unexploredDir);
+		} else {
+			unexploredDir = this.getRandomDirection();
+			moveInUnexploredDirection(tries + 1);
+		}
+	}
 }

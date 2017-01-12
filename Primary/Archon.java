@@ -10,17 +10,44 @@ public strictfp class Archon extends Bot{
 	public Archon(RobotController rc) throws GameActionException {
 		super(rc);
 		rc.donate(GameConstants.BULLET_EXCHANGE_RATE);
-		System.out.println("Here we are");;
 	}
 	
 	public void run() throws GameActionException{
-		System.out.println("Running archon now");
+		//System.out.println("Running archon now");
 		build();
-		//hireGardner();
-		//move();
-		//shake();
+		micro();
+		shake();
 	}
 	
+	// ----------------------------------------------------------------------
+	// BUILD
+	private void build() throws GameActionException {
+		boolean shouldBuildGardner = shouldBuildGardner();
+		if (shouldBuildGardner) {
+			//System.out.println("Trying to hire gardner now");
+			hireGardner();
+		}
+	}
+	
+	private boolean shouldBuildGardner() throws GameActionException {
+		if (rc.getRoundNum() <= 11) {
+			return true;
+		}
+		boolean gardnerIsSetup = rc.readBroadcast(Channels.GARDENER_IS_SETUP) > 0;
+		if (gardnerIsSetup) {
+			rc.broadcast(Channels.GARDENER_IS_SETUP, 0);
+			return true;
+		}
+		if ((rc.getRoundNum() % Constants.GARDNER_PING_RATE) + 5 == rc.getRoundNum()) {
+			int gardnerCount = rc.readBroadcast(Channels.GARDENER_PING_CHANNEL);
+			rc.broadcast(Channels.GARDENER_PING_CHANNEL, -1);
+			if (gardnerCount < 4 || rc.getTeamBullets() > 500) {
+				hireGardner();
+			}
+		}
+		return false;
+	}
+
 	private void hireGardner() throws GameActionException {
 		//rc.hireGardener(Direction.getNorth());
 		for (Direction dir: directions) {
@@ -30,19 +57,21 @@ public strictfp class Archon extends Bot{
 		}
 	}
 	
-	private void build() throws GameActionException {
-		if (rc.getRoundNum() <= 1) {
-			hireGardner();
-		} else if ((rc.getRoundNum() % Constants.GARDNER_PING_RATE) + 5 == rc.getRoundNum()){
-			int gardnerCount = rc.readBroadcast(Channels.GARDENER_PING_CHANNEL);
-			rc.broadcast(Channels.GARDENER_PING_CHANNEL, -1);
-			if (gardnerCount < 3 || rc.getTeamBullets() > 500) {
-				hireGardner();
-			}
+	// ----------------------------------------------------------------------
+	// MICRO
+	private void micro() throws GameActionException {
+		if (!rc.hasMoved()) {
+			stayAlive();
+		}
+		if (!rc.hasMoved()) {
+			moveTowardsUnshookTrees();
+		}
+		if (!rc.hasMoved()) {
+			moveInUnexploredDirection(0);
 		}
 	}
-	
-	private void move() {
+
+	private void stayAlive() {
 		
 	}
 
