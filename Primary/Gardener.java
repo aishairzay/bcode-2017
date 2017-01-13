@@ -22,17 +22,27 @@ public strictfp class Gardener extends Bot {
 		shake();
 	}
 
-	// figure out how to fix this method. I think we need to water the tree right on the edge of it?
-	// It's radius is 1, so water the edge? maybe need to move, but the other one wasn't doing that.
+	// figure out how to fix this method. I think we need to water the tree
+	// right on the edge of it?
+	// It's radius is 1, so water the edge? maybe need to move, but the other
+	// one wasn't doing that.
 	private void waterTrees() throws GameActionException {
 		TreeInfo[] trees = rc.senseNearbyTrees(3, myTeam);
 		System.out.println("Amount of trees: " + trees.length);
+		TreeInfo lowestHealth = null;
 		for (TreeInfo tree : trees) {
 			if (rc.canWater(tree.ID)) {
-				System.out.println("Watered a plant");
-				rc.water(tree.ID);
+				if (lowestHealth == null) {
+					lowestHealth = tree;
+				} else if (tree.health < lowestHealth.health) {
+					lowestHealth = tree;
+				}
 			}
 		}
+		if (lowestHealth != null) {
+			rc.water(lowestHealth.ID);
+		}
+
 	}
 
 	private void build() throws GameActionException {
@@ -41,11 +51,12 @@ public strictfp class Gardener extends Bot {
 		}
 		int openSquares = countNearbyOpenSquares(true);
 		System.out.println("Counted this many open squares: " + openSquares);
-		if (openSquares == 1) {
+		if (openSquares <= 1) {
 			buildUnit(RobotType.SCOUT);
-		} else if (rand.nextInt(4) > 0) {
+		} else if (openSquares > 1 && rand.nextInt(4) > 0) {
 			this.plantTree();
-		} else if (rc.hasRobotBuildRequirements(RobotType.SCOUT)) {
+		}
+		if (rc.isBuildReady() && rc.hasRobotBuildRequirements(RobotType.SCOUT)) {
 			buildUnit(RobotType.SCOUT);
 		}
 	}
@@ -99,22 +110,24 @@ public strictfp class Gardener extends Bot {
 		}
 	}
 
-	private int countNearbyOpenSquares(boolean shouldCountTrees) throws GameActionException {
+	private int countNearbyOpenSquares(boolean stationary) throws GameActionException {
 		int count = 0;
 		Direction initial = Direction.getNorth();
 		for (int i = 0; i < 6; i++) {
 			int rotation = 360 / 6;
 			Direction rotated = initial.rotateRightDegrees(rotation * i);
-			if (rc.canPlantTree(rotated)) {
-				count++;
-				continue;
+			MapLocation loc = rc.getLocation().add(rotated);
+			if (stationary) {
+				if (rc.canPlantTree(rotated)) {
+					count++;
+					continue;
+				}
+			} else {
+				if (rc.canPlantTree(rotated) || rc.senseRobotAtLocation(loc) != null) {
+					count++;
+					continue;
+				}
 			}
-			/*
-			 * MapLocation loc = rc.getLocation().add(rotated); TreeInfo t =
-			 * rc.senseTreeAtLocation(loc); RobotInfo r =
-			 * rc.senseRobotAtLocation(loc); if (t == null && r == null) {
-			 * continue; }
-			 */
 		}
 		return count;
 	}

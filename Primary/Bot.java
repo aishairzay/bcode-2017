@@ -2,15 +2,7 @@ package Primary;
 
 import java.util.Random;
 
-import battlecode.common.BulletInfo;
-import battlecode.common.Direction;
-import battlecode.common.GameActionException;
-import battlecode.common.MapLocation;
-import battlecode.common.RobotController;
-import battlecode.common.RobotInfo;
-import battlecode.common.RobotType;
-import battlecode.common.Team;
-import battlecode.common.TreeInfo;
+import battlecode.common.*;
 
 public strictfp abstract class Bot {
 	protected RobotController rc;
@@ -61,20 +53,14 @@ public strictfp abstract class Bot {
 	}
 
 	protected void shake() throws GameActionException {
-		boolean isArchon = false;
-		if (rc.getType().equals(RobotType.ARCHON)) {
-			isArchon = true;
-			System.out.println("Archon is shaking now!");
-		}
 		if (rc.canShake()) {
 			TreeInfo[] trees = rc.senseNearbyTrees(rc.getType().strideRadius, Team.NEUTRAL);
 			for (TreeInfo tree : trees) {
-				System.out.println("my stride radius: " + myType.strideRadius+ ", tree radius: " + tree.radius);
 				if (rc.canShake(tree.ID)) {
 					rc.shake(tree.ID);
 					int channel = this.getTreeChannel(tree.ID);
+					System.out.println("Got this tree channel: " + channel);
 					rc.broadcast(channel, 1);
-					System.out.println("Just broadcasted here! " + this.getTreeChannel(tree.ID));
 					break;
 				}
 			}
@@ -118,7 +104,8 @@ public strictfp abstract class Bot {
 	}
 
 	protected int getTreeChannel(int treeId) {
-		return 1000 + treeId;
+		treeId = (treeId % 1000) + 1000;
+		return treeId;
 	}
 
 	protected int getLocChannel(MapLocation loc) {
@@ -136,8 +123,10 @@ public strictfp abstract class Bot {
 		boolean left = rand.nextBoolean();
 		while (true) {
 			if (rc.canMove(rotation)) {
+				System.out.println("Able to move this try");
 				break;
 			}
+			System.out.println("Rotating fam");
 			if (i >= 8) {
 				break;
 			}
@@ -160,6 +149,9 @@ public strictfp abstract class Bot {
 		TreeInfo[] trees = rc.senseNearbyTrees(myType.sensorRadius, Team.NEUTRAL);
 		TreeInfo closest = null;
 		for (TreeInfo tree : trees) {
+			if (tree.team == Team.NEUTRAL) {
+				continue;
+			}
 			if (myType != RobotType.SCOUT && myType.strideRadius < tree.radius) {
 				continue;
 			}
@@ -188,10 +180,12 @@ public strictfp abstract class Bot {
 		if (tries == 8) {
 			return;
 		}
-		// Store a list of all directions we have explored
-		// Mark direction as explored once we hit a wall.
 		if (unexploredDir == null) {
 			unexploredDir = getRandomDirection();
+			if (unexploredDir == Direction.getEast() || unexploredDir == Direction.getNorth()
+					|| unexploredDir == Direction.getEast() || unexploredDir == Direction.getSouth()) {
+				unexploredDir = getRandomDirection();
+			}
 		}
 		if (rc.canMove(unexploredDir)) {
 			makeMove(unexploredDir);

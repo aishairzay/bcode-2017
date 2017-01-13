@@ -7,7 +7,7 @@ public strictfp class Channels {
 	public static final Integer ENEMY_ATTACK_LOCATION = 12;
 	
 	/* 
-	 * Channels 100 - 300 are purely reserved for Tree location channels.
+	 * Channels 1000 - 2000 are purely reserved for Tree location channels.
 	 *  Do not reuse these.
 	 */
 }

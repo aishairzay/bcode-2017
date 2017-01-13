@@ -1,17 +1,9 @@
 package Primary;
 
-import battlecode.common.BulletInfo;
-import battlecode.common.Direction;
-import battlecode.common.GameActionException;
-import battlecode.common.MapLocation;
-import battlecode.common.RobotController;
-import battlecode.common.RobotInfo;
-import battlecode.common.Team;
-import battlecode.common.TreeInfo;
+import battlecode.common.*;
 
 public strictfp class Scout extends Bot {
 
-	
 	boolean[] visitedArchonIndexes;
 	MapLocation enemyLocation;
 
@@ -32,34 +24,84 @@ public strictfp class Scout extends Bot {
 		BulletInfo[] bullets = rc.senseNearbyBullets();
 
 		getBulletDamagesByMoveLocs(bullets);
+		RobotInfo[] enemyRobots = rc.senseNearbyRobots(myType.sensorRadius, enemyTeam);
 
-		broadcastEnemies();
+		boolean shouldMove = true;
 
-		if (!rc.hasMoved()) {
+		if (shouldMove && !rc.hasMoved()) {
 			moveTowardsUnshookTrees();
 		}
-		if (!rc.hasMoved()) {
+		if (shouldMove && !rc.hasMoved()) {
+			shouldMove = moveTowardsSensedEnemy(enemyRobots);
+		}
+		if (shouldMove && !rc.hasMoved()) {
 			moveTowardsEnemy();
 		}
-		if (!rc.hasMoved()) {
+		if (shouldMove && !rc.hasMoved()) {
 			moveInUnexploredDirection(0);
 		}
-
-		RobotInfo[] enemyRobots = rc.senseNearbyRobots(myType.sensorRadius, enemyTeam);
 		if (!rc.hasAttacked()) {
-			attackEnemies(enemyRobots);
+			attackEnemies(enemyRobots, RobotType.GARDENER);
 		}
-
-		/*
-		 * if (!rc.hasAttacked()) { RobotInfo[] enemyRobots =
-		 * rc.senseNearbyRobots(myType.sensorRadius, enemyTeam);
-		 * attackEnemies(enemyRobots); } if (!rc.hasAttacked()) { TreeInfo[]
-		 * trees = rc.senseNearbyTrees(); attackPlants(); }
-		 */
+		if (!rc.hasAttacked()) {
+			attackEnemies(enemyRobots, null);
+		}
 	}
 
-	private void broadcastEnemies() {
+	private boolean moveTowardsSensedEnemy(RobotInfo[] enemies) throws GameActionException {
+		RobotInfo closestGardener = null;
+		for (RobotInfo enemy : enemies) {
+			if (enemy.type == RobotType.GARDENER) {
+				if (closestGardener == null) {
+					closestGardener = enemy;
+				} else if (rc.getLocation().distanceSquaredTo(enemy.location) < rc.getLocation()
+						.distanceSquaredTo(closestGardener.location)) {
+					closestGardener = enemy;
+				}
+			}
+		}
+		if (closestGardener != null) {
+			System.out.println("Going towards closest gardener");
 
+			if (rc.getLocation().distanceTo(closestGardener.location) >= 2.5) {
+				Direction dir = rc.getLocation().directionTo(closestGardener.location);
+				if (rc.canMove(dir)) {
+					System.out.println("Making straight movement");
+					rc.move(dir);
+					System.out
+							.println("My distance to it is: " + rc.getLocation().distanceTo(closestGardener.location));
+				} else {
+					this.makeMove(rc.getLocation().directionTo(closestGardener.location));
+				}
+			}
+			return false;
+		}
+		return true;
+	}
+
+	private void attackEnemies(RobotInfo[] enemies, RobotType type) throws GameActionException {
+		RobotInfo closestEnemy = null;
+		if (!rc.canFireSingleShot()) {
+			return;
+		}
+		for (RobotInfo enemy : enemies) {
+			if (type == null || enemy.type == type) {
+				float distance = rc.getLocation().distanceTo(enemy.location);
+				System.out.println("Distance is: " + distance);
+				System.out.println("Combined body radius is: " + myType.bodyRadius + enemy.type.bodyRadius);
+				if (distance < myType.bodyRadius + enemy.type.bodyRadius + 1) {
+					if (closestEnemy == null) {
+						closestEnemy = enemy;
+
+					} else if (distance <= rc.getLocation().distanceTo(closestEnemy.location)) {
+						closestEnemy = enemy;
+					}
+				}
+			}
+		}
+		if (closestEnemy != null) {
+			rc.fireSingleShot(rc.getLocation().directionTo(closestEnemy.location));
+		}
 	}
 
 	private void moveTowardsEnemy() throws GameActionException {
@@ -96,26 +138,6 @@ public strictfp class Scout extends Bot {
 
 	protected void shake() throws GameActionException {
 		super.shake();
-	}
-
-	// Attacks the most optimal to attack nearby enemy.
-	// Need to account for trees being in the way of a bullet being shot.
-	// And not take that shot
-	private void attackEnemies(RobotInfo[] enemyRobots) throws GameActionException {
-		if (enemyRobots.length == 0) {
-			return;
-		}
-		RobotInfo bestToAttack = enemyRobots[0];
-		for (RobotInfo robot : enemyRobots) {
-			float distance = rc.getLocation().distanceSquaredTo(robot.location);
-			double enemyHealth = bestToAttack.health;
-			if (distance < rc.getLocation().distanceSquaredTo(bestToAttack.location)) {
-				bestToAttack = robot;
-			}
-		}
-		if (rc.canFireSingleShot()) {
-			rc.fireSingleShot(rc.getLocation().directionTo(bestToAttack.location));
-		}
 	}
 
 	private void attackPlants() {
