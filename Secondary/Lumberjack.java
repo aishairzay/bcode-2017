@@ -5,6 +5,9 @@ import battlecode.common.GameActionException;
 import battlecode.common.MapLocation;
 import battlecode.common.RobotController;
 import battlecode.common.RobotInfo;
+import battlecode.common.RobotType;
+import battlecode.common.Team;
+import battlecode.common.TreeInfo;
 
 public strictfp class Lumberjack extends Bot {
 
@@ -15,83 +18,165 @@ public strictfp class Lumberjack extends Bot {
 
 	@Override
 	public void run() throws GameActionException {
-		micro();
-		chop();
+		TreeInfo[] trees = rc.senseNearbyTrees(myType.sensorRadius, Team.NEUTRAL);
+		RobotInfo[] enemies = rc.senseNearbyRobots(myType.sensorRadius, enemyTeam);
+		chop(trees);
+		boolean shouldMove = false;
+		if (!rc.hasMoved()) {
+			shouldMove = micro(enemies);
+		}
+		if (shouldMove && !rc.hasMoved()) {
+			moveTowardsEnemy(enemies);
+		}
+		if (shouldMove && !rc.hasMoved()) {
+			moveTowardsNeutralTree(trees);
+		}
+		if (shouldMove && !rc.hasMoved()) {
+			moveTowardsHome();
+		}
+		chop(trees);
 		shake();
 	}
 
-	private void chop() {
-
+	private void moveTowardsEnemy(RobotInfo[] enemies) throws GameActionException {
+		if (enemies.length == 0) {
+			return;
+		}
+		RobotInfo enemy = enemies[0];
+		this.makeMove(rc.getLocation().directionTo(enemy.location));
 	}
 
-	private void micro() throws GameActionException {
-		RobotInfo[] enemies = rc.senseNearbyRobots(myType.sensorRadius, enemyTeam);
-		Direction toMove = null;
-
-		if (toMove == null) {
-			toMove = moveTowardsClosestEnemy(enemies);
+	private void moveTowardsNeutralTree(TreeInfo[] trees) throws GameActionException {
+		if (trees.length == 0) {
+			return;
 		}
-		Direction nextDir = getMoveDir(toMove);
-		MapLocation nextLoc = rc.getLocation().add(nextDir);
+		TreeInfo first = trees[0];
+		if (home.distanceTo(first.location) > RobotType.LUMBERJACK.sensorRadius) {
+			return;
+		}
+		this.makeMove(rc.getLocation().directionTo(first.location));
+	}
 
-		int curScore = getScore(rc.getLocation());
-		int nextScore = this.getScore(nextLoc);
+	private void moveTowardsHome() throws GameActionException {
+		float dist = rc.getLocation().distanceTo(home);
+		if (rc.getLocation().distanceTo(home) <= 4) {
+			moveInUnexploredDirection(0);
+		}
+		if (!rc.canSenseLocation(home)) {
+			this.makeMove(rc.getLocation().directionTo(home));
+		}
+	}
 
-		if ((nextScore <= 0 && curScore <= 0) || (nextScore >= curScore)) {
-			rc.move(nextDir);
-			if (nextScore >= 0) {
-				rc.strike();
+	private void chop(TreeInfo[] trees) throws GameActionException {
+		if (trees.length > 0 && rc.canChop(trees[0].ID)) {
+			rc.chop(trees[0].ID);
+		}
+	}
+
+	private boolean micro(RobotInfo[] enemies) throws GameActionException {
+		if (enemies.length == 0) {
+			return true;
+		}
+		Direction north = Direction.getNorth();
+		int turns = 16;
+		int highestScore = -1000;
+		float bestDist = 100000;
+		Direction next = null;
+		for (int i = 0; i < turns; i++) {
+			float rotation = i * (360 / turns);
+			Direction dir = north.rotateRightDegrees(rotation);
+			MapLocation loc = rc.getLocation().add(dir);
+			float distToHome = loc.distanceTo(home);
+			Integer score = getScore(dir);
+			System.out.println("Got score : " + i + ", " + score);
+			if (score == null || score <= 0) {
+				continue;
+			}
+			if (score > highestScore) {
+				highestScore = score;
+				bestDist = distToHome;
+				next = dir;
+			} else if (score == highestScore && distToHome < bestDist) {
+				bestDist = distToHome;
+				next = dir;
+			}
+		}
+		if (next == null) {
+			return true;
+		}
+		int nextScore = highestScore;
+		int curScore = getScore(null);
+		float dist = rc.getLocation().distanceTo(home);
+
+		System.out.println("Moving this way: " + next);
+		// goal here is to move to location with best score.
+		// attack before moving if current location has better score.
+		// move then attack if new location has best score.
+		// if there is an equal score, then move only if the next location is
+		// closer to home
+		if (nextScore == curScore) {
+			if (dist > bestDist) {
+				rc.move(next);
+			}
+			if (rc.canStrike()) {
+				strike(nextScore);
+			}
+			return false;
+		} else if (nextScore > curScore) {
+			rc.move(next);
+			if (rc.canStrike()) {
+				strike(nextScore);
 			}
 		} else {
+			if (rc.canStrike()) {
+				strike(curScore);
+			}
+			rc.move(next);
+		}
+		return true;
+	}
+
+	private void strike(Integer score) throws GameActionException {
+		if (score < 0) {
+			return;
+		}
+		if (rc.canStrike()) {
 			rc.strike();
+		}
+	}
+
+	void safeMove(Direction nextDir) throws GameActionException {
+		if (nextDir == null) {
+			return;
+		}
+		rc.setIndicatorLine(rc.getLocation(), rc.getLocation().add(nextDir), 200, 0, 0);
+		if (rc.canMove(nextDir)) {
 			rc.move(nextDir);
-		}
-
-		if (!rc.hasMoved()) {
-			this.moveInUnexploredDirection(0);
-			if (this.getScore(rc.getLocation()) > 0) {
-				rc.strike();
-			}
+		} else {
+			this.makeMove(nextDir);
 		}
 	}
 
-	private int getScore(MapLocation loc) {
-		RobotInfo[] allies = rc.senseNearbyRobots(loc, 1, myTeam);
-		RobotInfo[] enemies = rc.senseNearbyRobots(loc, 1, enemyTeam);
+	private Integer getScore(Direction dir) {
+		if (dir != null && !rc.canMove(dir, myType.strideRadius)) {
+			return null;
+		}
+		MapLocation loc = rc.getLocation();
+		if (dir != null) {
+			loc = loc.add(dir, myType.strideRadius);
+		}
+		RobotInfo[] allies = rc.senseNearbyRobots(loc, myType.bodyRadius + 1, myTeam);
+		RobotInfo[] enemies = rc.senseNearbyRobots(loc, myType.bodyRadius + 1, enemyTeam);
 		int score = 0;
-		score += allies.length - enemies.length;
+		if (enemies.length > 0) {
+			score++;
+		}
+		System.out.println("ally length: " + allies.length);
+		System.out.println("enemy length: " + enemies.length);
+		score += enemies.length;
+		score -= allies.length;
+		// System.out.println("Got score: " + score);
 		return score;
-	}
-
-	private Direction getMoveDir(Direction toMove) {
-		int rotation = 30;
-		boolean toggle = rand.nextBoolean();
-		Direction newDirection = toMove;
-		Direction bestDirection = null;
-		if (rc.canMove(toMove)) {
-			bestDirection = toMove;
-		}
-		int bestDirectionScore = 0;
-		for (int i = 0; i < 7; i++) {
-			if (rc.canMove(toMove) && bestDirection == null) {
-				bestDirection = toMove;
-				bestDirectionScore = getScore(rc.getLocation().add(bestDirection));
-			}
-			int newScore = getScore(rc.getLocation().add(newDirection));
-			if (newScore > bestDirectionScore) {
-				bestDirectionScore = newScore;
-				bestDirection = toMove;
-			}
-			if (toggle) {
-				newDirection = toMove.rotateRightDegrees(rotation);
-			} else {
-				newDirection = toMove.rotateLeftDegrees(rotation);
-			}
-			if (i % 2 == 1) {
-				rotation += 30;
-			}
-		}
-		return bestDirection;
 	}
 
 	private RobotInfo findClosestEnemy(RobotInfo[] enemies) {
@@ -105,12 +190,12 @@ public strictfp class Lumberjack extends Bot {
 				closest = bot;
 			}
 		}
-		return null;
+		return closest;
 	}
 
 	private Direction moveTowardsClosestEnemy(RobotInfo[] enemies) {
 		RobotInfo closest = findClosestEnemy(enemies);
-		return rc.getLocation().directionTo(closest.location);
+		return closest == null ? null : rc.getLocation().directionTo(closest.location);
 	}
 
 }

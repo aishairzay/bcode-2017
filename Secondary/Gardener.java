@@ -6,7 +6,7 @@ public strictfp class Gardener extends Bot {
 	private boolean stationary;
 	private int buildCount;
 
-	public Gardener(RobotController rc) {
+	public Gardener(RobotController rc) throws GameActionException {
 		super(rc);
 		stationary = false;
 		buildCount = 0;
@@ -27,13 +27,28 @@ public strictfp class Gardener extends Bot {
 	}
 
 	private boolean buildEarlyUnits() throws GameActionException {
-		// System.out.println("Build count is: " + buildCount);
+		System.out.println("Build count is: " + buildCount);
 		if (buildCount == 0) {
 			this.buildUnit(RobotType.SCOUT);
+			this.moveInUnexploredDirection(0);
 			return false;
 		} else if (buildCount == 1) {
 			this.buildUnit(RobotType.LUMBERJACK);
+			this.moveInUnexploredDirection(0);
 			return false;
+		} else {
+			RobotInfo[] allies = rc.senseNearbyRobots(myType.sensorRadius);
+			boolean hasLumberjack = false;
+			for (RobotInfo ally : allies) {
+				if (ally.type == RobotType.LUMBERJACK) {
+					hasLumberjack = true;
+					break;
+				}
+			}
+			if (!hasLumberjack) {
+				this.buildUnit(RobotType.LUMBERJACK);
+				return false;
+			}
 		}
 		return true;
 	}
@@ -62,9 +77,6 @@ public strictfp class Gardener extends Bot {
 	}
 
 	private void build() throws GameActionException {
-		if (!stationary) {
-			return;
-		}
 		RobotInfo[] teammates = rc.senseNearbyRobots(myType.sensorRadius, myTeam);
 		RobotInfo[] enemies = rc.senseNearbyRobots(myType.sensorRadius, enemyTeam);
 		int allyCount = 0;
@@ -84,9 +96,10 @@ public strictfp class Gardener extends Bot {
 			return;
 		}
 		int openSquares = countNearbyOpenSquares(true);
+		System.out.println("Counted this many open squares: " + openSquares);
 		if (openSquares <= 1) {
 			buildUnit(RobotType.SCOUT);
-		} else if (openSquares > 1 && rand.nextInt(4) > 0) {
+		} else if (openSquares > 1) {
 			this.plantTree();
 		}
 		if (rc.isBuildReady() && rc.hasRobotBuildRequirements(RobotType.SCOUT)) {
@@ -95,10 +108,13 @@ public strictfp class Gardener extends Bot {
 	}
 
 	private void buildUnit(RobotType type) throws GameActionException {
-		if (rc.hasRobotBuildRequirements(RobotType.SCOUT)) {
+		if (rc.getTeamBullets() < 100) {
+			return;
+		}
+		if (rc.hasRobotBuildRequirements(type)) {
 			for (Direction dir : directions) {
-				if (rc.canBuildRobot(RobotType.SCOUT, dir)) {
-					rc.buildRobot(RobotType.SCOUT, dir);
+				if (rc.canBuildRobot(type, dir)) {
+					rc.buildRobot(type, dir);
 					buildCount++;
 					break;
 				}

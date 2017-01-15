@@ -75,7 +75,7 @@ public strictfp abstract class Bot {
 				if (rc.canShake(tree.ID)) {
 					rc.shake(tree.ID);
 					int channel = this.getTreeChannel(tree.ID);
-					System.out.println("Got this tree channel: " + channel);
+					//System.out.println("Got this tree channel: " + channel);
 					rc.broadcast(channel, 1);
 					break;
 				}
@@ -143,10 +143,10 @@ public strictfp abstract class Bot {
 		boolean left = rand.nextBoolean();
 		while (true) {
 			if (rc.canMove(rotation)) {
-				System.out.println("Able to move this try");
+				//System.out.println("Able to move this try");
 				break;
 			}
-			System.out.println("Rotating fam");
+			//System.out.println("Rotating fam");
 			if (i >= 8) {
 				break;
 			}
@@ -176,7 +176,7 @@ public strictfp abstract class Bot {
 				continue;
 			}
 			int broadcast = rc.readBroadcast(this.getTreeChannel(tree.ID));
-			System.out.println("Got broadcast for " + this.getTreeChannel(tree.ID) + ", it is: " + broadcast);
+			//System.out.println("Got broadcast for " + this.getTreeChannel(tree.ID) + ", it is: " + broadcast);
 			boolean visited = rc.readBroadcast(this.getTreeChannel(tree.ID)) > 0;
 			if (visited) {
 				continue;

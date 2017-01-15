@@ -61,12 +61,12 @@ public strictfp class Scout extends Bot {
 			}
 		}
 		if (closestGardener != null) {
-			System.out.println("Going towards closest gardener");
+			//System.out.println("Going towards closest gardener");
 
 			if (rc.getLocation().distanceTo(closestGardener.location) >= 2.5) {
 				Direction dir = rc.getLocation().directionTo(closestGardener.location);
 				if (rc.canMove(dir)) {
-					System.out.println("Making straight movement");
+					//System.out.println("Making straight movement");
 					rc.move(dir);
 				} else {
 					this.makeMove(rc.getLocation().directionTo(closestGardener.location));
@@ -85,8 +85,8 @@ public strictfp class Scout extends Bot {
 		for (RobotInfo enemy : enemies) {
 			if (type == null || enemy.type == type) {
 				float distance = rc.getLocation().distanceTo(enemy.location);
-				System.out.println("Distance is: " + distance);
-				System.out.println("Combined body radius is: " + myType.bodyRadius + enemy.type.bodyRadius);
+				//System.out.println("Distance is: " + distance);
+				//System.out.println("Combined body radius is: " + myType.bodyRadius + enemy.type.bodyRadius);
 				if (distance < myType.bodyRadius + enemy.type.bodyRadius + 1) {
 					if (closestEnemy == null) {
 						closestEnemy = enemy;
@@ -105,7 +105,7 @@ public strictfp class Scout extends Bot {
 	private void moveTowardsEnemy() throws GameActionException {
 		if (enemyLocation != null) {
 			makeMove(rc.getLocation().directionTo(enemyLocation));
-			rc.setIndicatorLine(rc.getLocation(), enemyLocation, 0, 200, 200);
+			//rc.setIndicatorLine(rc.getLocation(), enemyLocation, 0, 200, 200);
 			return;
 		}
 		MapLocation closest = null;
@@ -131,7 +131,6 @@ public strictfp class Scout extends Bot {
 			return;
 		}
 		makeMove(rc.getLocation().directionTo(closest));
-		rc.setIndicatorLine(rc.getLocation(), closest, 200, 0, 200);
 	}
 
 	protected void shake() throws GameActionException {
