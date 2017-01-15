@@ -1,4 +1,4 @@
-package Primary;
+package Secondary;
 
 import battlecode.common.Direction;
 import battlecode.common.GameActionException;
@@ -10,7 +10,7 @@ public strictfp class Lumberjack extends Bot {
 
 	public Lumberjack(RobotController rc) {
 		super(rc);
-		// TODO Auto-generated constructor stub
+		home = rc.getLocation();
 	}
 
 	@Override
@@ -21,7 +21,6 @@ public strictfp class Lumberjack extends Bot {
 	}
 
 	private void chop() {
-		// TODO Auto-generated method stub
 
 	}
 

@@ -1,34 +1,41 @@
-package Primary;
+package Secondary;
 
 import battlecode.common.*;
 
 public strictfp class Gardener extends Bot {
-	private static final int MIN_MOVES = 8;
 	private boolean stationary;
-	private int steps;
+	private int buildCount;
 
 	public Gardener(RobotController rc) {
 		super(rc);
 		stationary = false;
-		steps = 0;
+		buildCount = 0;
 	}
 
 	@Override
 	public void run() throws GameActionException {
 		ping();
-		buildEarlyUnits();
-		move();
-		build();
+		boolean shouldBuild = buildEarlyUnits();
+		if (!rc.hasMoved()) {
+			stayAlive();
+		}
+		if (shouldBuild) {
+			build();
+		}
 		waterTrees();
 		shake();
 	}
 
-	private void buildEarlyUnits() throws GameActionException {
-		if (rc.getRoundNum() < 10) {
+	private boolean buildEarlyUnits() throws GameActionException {
+		// System.out.println("Build count is: " + buildCount);
+		if (buildCount == 0) {
 			this.buildUnit(RobotType.SCOUT);
-		} else if (rc.getRoundNum() < 20) {
-			this.buildUnit(RobotType.SCOUT);
+			return false;
+		} else if (buildCount == 1) {
+			this.buildUnit(RobotType.LUMBERJACK);
+			return false;
 		}
+		return true;
 	}
 
 	// figure out how to fix this method. I think we need to water the tree
@@ -58,8 +65,25 @@ public strictfp class Gardener extends Bot {
 		if (!stationary) {
 			return;
 		}
+		RobotInfo[] teammates = rc.senseNearbyRobots(myType.sensorRadius, myTeam);
+		RobotInfo[] enemies = rc.senseNearbyRobots(myType.sensorRadius, enemyTeam);
+		int allyCount = 0;
+		int enemyCount = 0;
+		for (RobotInfo t : teammates) {
+			if (t.type == RobotType.LUMBERJACK) {
+				allyCount++;
+			}
+		}
+		for (RobotInfo e : enemies) {
+			if (e.type != RobotType.ARCHON && e.type != RobotType.LUMBERJACK) {
+				enemyCount++;
+			}
+		}
+		if (enemyCount >= allyCount) {
+			buildUnit(RobotType.LUMBERJACK);
+			return;
+		}
 		int openSquares = countNearbyOpenSquares(true);
-		System.out.println("Counted this many open squares: " + openSquares);
 		if (openSquares <= 1) {
 			buildUnit(RobotType.SCOUT);
 		} else if (openSquares > 1 && rand.nextInt(4) > 0) {
@@ -75,36 +99,11 @@ public strictfp class Gardener extends Bot {
 			for (Direction dir : directions) {
 				if (rc.canBuildRobot(RobotType.SCOUT, dir)) {
 					rc.buildRobot(RobotType.SCOUT, dir);
+					buildCount++;
 					break;
 				}
 			}
 		}
-	}
-
-	private void move() throws GameActionException {
-		if (stationary) {
-			return;
-		}
-		moveInUnexploredDirection(0);
-		if (rc.hasMoved()) {
-			steps++;
-		}
-
-		int nearbyOpenSquares = countNearbyOpenSquares(false);
-		if (nearbyOpenSquares >= 4) {
-			stationary = true;
-		}
-		if (steps >= MIN_MOVES && nearbyOpenSquares > 1) {
-			stationary = true;
-		}
-		if (steps >= MIN_MOVES + 2) {
-			plantTree();
-		}
-		if (stationary && nearbyOpenSquares <= 1) {
-			rc.broadcast(Channels.GARDENER_IS_SETUP, 1);
-			System.out.println("Gardener is now stationary!");
-		}
-
 	}
 
 	private void plantTree() throws GameActionException {

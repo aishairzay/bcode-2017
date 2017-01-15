@@ -1,25 +1,25 @@
-package Primary;
+package Secondary;
 
 import battlecode.common.Direction;
 import battlecode.common.GameActionException;
-import battlecode.common.GameConstants;
+import battlecode.common.MapLocation;
 import battlecode.common.RobotController;
 
 public strictfp class Archon extends Bot {
 
 	int gardnerCount;
+	boolean isLeader;
+	MapLocation lastSpawn;
 
 	public Archon(RobotController rc) throws GameActionException {
 		super(rc);
-		rc.donate(GameConstants.BULLET_EXCHANGE_RATE);
 		gardnerCount = 1;
+		isLeader = home.equals(rc.getLocation());
 	}
 
 	public void run() throws GameActionException {
-		// System.out.println("Running archon now");
 		build();
 		micro();
-		shake();
 	}
 
 	// ----------------------------------------------------------------------
@@ -27,14 +27,18 @@ public strictfp class Archon extends Bot {
 	private void build() throws GameActionException {
 		boolean shouldBuildGardner = shouldBuildGardner();
 		if (shouldBuildGardner) {
-			// System.out.println("Trying to hire gardner now");
 			hireGardner();
 		}
 	}
 
 	private boolean shouldBuildGardner() throws GameActionException {
-		if (rc.getRoundNum() <= 9 && allyArchons[0].equals(rc.getLocation())) {
-			return true;
+		if (!isLeader) {
+			return false;
+		}
+		if (isLeader) {
+			if (rc.getRoundNum() <= 1) {
+				return true;
+			}
 		}
 		boolean needNewGardener = rc.readBroadcast(Channels.GARDENER_IS_SETUP) > 0;
 		if (needNewGardener) {
@@ -58,6 +62,7 @@ public strictfp class Archon extends Bot {
 		for (Direction dir : directions) {
 			if (rc.canHireGardener(dir)) {
 				rc.hireGardener(dir);
+				lastSpawn = rc.getLocation().add(dir, 1);
 			}
 		}
 	}
@@ -68,16 +73,23 @@ public strictfp class Archon extends Bot {
 		if (!rc.hasMoved()) {
 			stayAlive();
 		}
-		if (!rc.hasMoved()) {
-			moveTowardsUnshookTrees();
+		if (isLeader && !rc.hasMoved()) {
+			moveAwayFromLastSpawn();
 		}
-		if (!rc.hasMoved()) {
-			moveInUnexploredDirection(0);
+		if (!isLeader) {
+			if (!rc.hasMoved()) {
+				moveTowardsUnshookTrees();
+			}
+			if (!rc.hasMoved()) {
+				moveInUnexploredDirection(0);
+			}
 		}
 	}
 
-	private void stayAlive() {
-
+	private void moveAwayFromLastSpawn() throws GameActionException {
+		if (rc.getLocation().distanceTo(lastSpawn) <= 7) {
+			this.moveInUnexploredDirection(0);
+		}
 	}
 
 }
