@@ -1,4 +1,4 @@
-package Secondary;
+package PrimarySoldier;
 
 import battlecode.common.*;
 
@@ -61,12 +61,13 @@ public strictfp class Scout extends Bot {
 			}
 		}
 		if (closestGardener != null) {
-			// System.out.println("Going towards closest gardener");
-
-			if (rc.getLocation().distanceTo(closestGardener.location) >= 2.5) {
+			RobotInfo closest = getClosestHostileEnemy(enemies);
+			if (rc.getHealth() < 10 && rc.getLocation().distanceTo(closest.location) < 6) {
+				return true;
+			}
+			if (rc.getLocation().distanceTo(closestGardener.location) >= 2.4) {
 				Direction dir = rc.getLocation().directionTo(closestGardener.location);
 				if (rc.canMove(dir)) {
-					// System.out.println("Making straight movement");
 					rc.move(dir);
 				} else {
 					this.makeMove(rc.getLocation().directionTo(closestGardener.location));
@@ -77,6 +78,20 @@ public strictfp class Scout extends Bot {
 		return true;
 	}
 
+	private RobotInfo getClosestHostileEnemy(RobotInfo[] enemies) {
+		RobotInfo closestEnemy = null;
+		for (RobotInfo enemy : enemies) {
+			if (enemy.type == RobotType.ARCHON || enemy.type == RobotType.GARDENER) {
+				continue;
+			}
+			if (closestEnemy == null) {
+				closestEnemy = enemy;
+				break;
+			}
+		}
+		return closestEnemy;
+	}
+
 	private void attackEnemies(RobotInfo[] enemies, RobotType type) throws GameActionException {
 		RobotInfo closestEnemy = null;
 		if (!rc.canFireSingleShot()) {
@@ -85,13 +100,9 @@ public strictfp class Scout extends Bot {
 		for (RobotInfo enemy : enemies) {
 			if (type == null || enemy.type == type) {
 				float distance = rc.getLocation().distanceTo(enemy.location);
-				// System.out.println("Distance is: " + distance);
-				// System.out.println("Combined body radius is: " +
-				// myType.bodyRadius + enemy.type.bodyRadius);
-				if (distance < myType.bodyRadius + enemy.type.bodyRadius + 1) {
+				if (distance < myType.bodyRadius + enemy.type.bodyRadius + 2) {
 					if (closestEnemy == null) {
 						closestEnemy = enemy;
-
 					} else if (distance <= rc.getLocation().distanceTo(closestEnemy.location)) {
 						closestEnemy = enemy;
 					}
@@ -106,8 +117,6 @@ public strictfp class Scout extends Bot {
 	private void moveTowardsEnemy() throws GameActionException {
 		if (enemyLocation != null) {
 			makeMove(rc.getLocation().directionTo(enemyLocation));
-			// rc.setIndicatorLine(rc.getLocation(), enemyLocation, 0, 200,
-			// 200);
 			return;
 		}
 		MapLocation closest = null;
