@@ -1,4 +1,4 @@
-package PrimarySoldier;
+package reinvent;
 
 import battlecode.common.*;
 
@@ -26,10 +26,31 @@ public strictfp class Gardener extends Bot {
 		shake();
 	}
 
+	private Direction getDirAwayFromWall() throws GameActionException {
+		MapLocation myLoc = rc.getLocation();
+		if (!rc.onTheMap(myLoc.add(Direction.EAST, 5))) {
+			return Direction.WEST;
+		}
+		if (!rc.onTheMap(myLoc.add(Direction.WEST, 5))) {
+			return Direction.EAST;
+		}
+		if (!rc.onTheMap(myLoc.add(Direction.NORTH, 5))) {
+			return Direction.SOUTH;
+		}
+		if (!rc.onTheMap(myLoc.add(Direction.SOUTH, 5))) {
+			return Direction.NORTH;
+		}
+		return this.getRandomDirection();
+	}
+
 	private boolean buildEarlyUnits() throws GameActionException {
-		if (buildCount < 2) {
+		if (buildCount < 2 || !rc.onTheMap(rc.getLocation(), 4)) {
 			if (this.countNearbyOpenSquares(true) <= 4) {
-				this.makeMove(this.getRandomDirection());
+				Direction awayFromWall = getDirAwayFromWall();
+				if (awayFromWall != null) {
+					this.makeMove(awayFromWall);
+					this.unexploredDir = this.getRandomDirection();
+				}
 			}
 		}
 		if (buildCount == 0) {
@@ -99,19 +120,13 @@ public strictfp class Gardener extends Bot {
 		}
 		int openSquares = countNearbyOpenSquares(true);
 		System.out.println("Counted this many open squares: " + openSquares);
-		if (openSquares <= 1) {
-			buildUnit(RobotType.TANK);
-			if (rc.isBuildReady()) {
-				buildUnit(RobotType.SOLDIER);
+		if (openSquares > 1) {
+			if (rand.nextBoolean()) {
+				this.plantTree();
 			}
-		} else if (openSquares > 1) {
-			this.plantTree();
 		}
-		if (rc.isBuildReady() && rc.hasRobotBuildRequirements(RobotType.TANK)) {
-			buildUnit(RobotType.TANK);
-		}
-		if (rc.isBuildReady() && rc.hasRobotBuildRequirements(RobotType.SOLDIER)) {
-			buildUnit(RobotType.SOLDIER);
+		if (rc.isBuildReady() && rc.hasRobotBuildRequirements(RobotType.LUMBERJACK)) {
+			buildUnit(RobotType.LUMBERJACK);
 		}
 	}
 

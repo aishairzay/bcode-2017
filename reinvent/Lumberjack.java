@@ -1,4 +1,4 @@
-package PrimarySoldier;
+package reinvent;
 
 import battlecode.common.Direction;
 import battlecode.common.GameActionException;
@@ -27,7 +27,7 @@ public strictfp class Lumberjack extends Bot {
 	public void run() throws GameActionException {
 		roundsAlive++;
 		if (!attacking && roundsAlive > 75 && rc.getRoundNum() % 100 == 0) {
-			// attacking = true;
+			attacking = true;
 		}
 		TreeInfo[] trees = rc.senseNearbyTrees(myType.sensorRadius, Team.NEUTRAL);
 		RobotInfo[] enemies = rc.senseNearbyRobots(myType.sensorRadius, enemyTeam);

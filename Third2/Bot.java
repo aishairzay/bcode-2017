@@ -1,4 +1,4 @@
-package PrimarySoldier;
+package Third2;
 
 import java.util.Random;
 
@@ -167,7 +167,7 @@ public strictfp abstract class Bot {
 		}
 	}
 
-	protected void moveTowardsUnshookTrees() throws GameActionException {
+	protected boolean moveTowardsUnshookTrees() throws GameActionException {
 		TreeInfo[] trees = rc.senseNearbyTrees(myType.sensorRadius, Team.NEUTRAL);
 		TreeInfo closest = null;
 		for (TreeInfo tree : trees) {
@@ -190,20 +190,21 @@ public strictfp abstract class Bot {
 		}
 		System.out.println("Got closest tree: " + null);
 		if (closest == null) {
-			return;
+			return true;
 		}
 		if (rc.canMove(closest.location)) {
 			rc.move(closest.location);
+			return false;
 		} else {
 			Direction dir = rc.getLocation().directionTo(closest.location);
 			makeMove(dir);
+			return false;
 		}
-		rc.setIndicatorLine(rc.getLocation(), closest.location, 200, 0, 0);
 	}
 
-	protected void moveInUnexploredDirection(int tries) throws GameActionException {
+	protected boolean moveInUnexploredDirection(int tries) throws GameActionException {
 		if (tries == 8) {
-			return;
+			return true;
 		}
 		if (unexploredDir == null) {
 			unexploredDir = getRandomDirection();
@@ -214,14 +215,31 @@ public strictfp abstract class Bot {
 		}
 		if (rc.canMove(unexploredDir)) {
 			makeMove(unexploredDir);
+			return false;
 		} else {
 			unexploredDir = this.getRandomDirection();
-			moveInUnexploredDirection(tries + 1);
+			return moveInUnexploredDirection(tries + 1);
 		}
 	}
 
-	protected boolean isHostile(RobotType type) {
-		return type == RobotType.LUMBERJACK || type == RobotType.SCOUT || type == RobotType.SOLDIER
-				|| type == RobotType.TANK;
+	protected boolean bulletPathClear(MapLocation source, RobotInfo toAttack) throws GameActionException {
+		if (toAttack == null) {
+			return false;
+		}
+		MapLocation dest = toAttack.location;
+		Direction towardsEnemy = source.directionTo(dest);
+		MapLocation iter = source.add(towardsEnemy, rc.getType().bodyRadius + 1);
+		while (dest.distanceTo(iter) >= 1) {
+			RobotInfo r = rc.senseRobotAtLocation(iter);
+			TreeInfo t = rc.senseTreeAtLocation(iter);
+			if (r != null && r.equals(toAttack.location)) {
+				return true;
+			}
+			if (t != null) {
+				return false;
+			}
+			iter = iter.add(towardsEnemy, 1);
+		}
+		return dest.distanceTo(iter) <= 1;
 	}
 }

@@ -1,4 +1,4 @@
-package PrimarySoldier;
+package Third2;
 
 import battlecode.common.Direction;
 import battlecode.common.GameActionException;
@@ -14,13 +14,13 @@ public strictfp class Archon extends Bot {
 	public Archon(RobotController rc) throws GameActionException {
 		super(rc);
 		gardnerCount = 1;
-		lastSpawn = rc.getLocation();
 		isLeader = home.equals(rc.getLocation());
 	}
 
 	public void run() throws GameActionException {
 		build();
 		micro();
+		shake();
 	}
 
 	// ----------------------------------------------------------------------
@@ -46,12 +46,14 @@ public strictfp class Archon extends Bot {
 			rc.broadcast(Channels.GARDENER_IS_SETUP, 0);
 			return true;
 		}
-		if ((rc.getRoundNum() % Constants.GARDNER_PING_RATE) == 2) {
+		if ((rc.getRoundNum() % Constants.GARDNER_PING_RATE) == 1) {
 			gardnerCount = rc.readBroadcast(Channels.GARDENER_PING_CHANNEL);
-			rc.broadcast(Channels.GARDENER_PING_CHANNEL, -1);
 			if (gardnerCount <= Constants.MAX_GARDNER_COUNT) {
 				hireGardner();
 			}
+		}
+		if (rc.getRoundNum() % Constants.GARDNER_PING_RATE == 2) {
+			rc.broadcast(Channels.GARDENER_PING_CHANNEL, -1);
 		}
 		if (rc.getRoundNum() > 100 && rc.getTeamBullets() >= 125 && gardnerCount <= Constants.MAX_GARDNER_COUNT) {
 			hireGardner();
@@ -80,13 +82,40 @@ public strictfp class Archon extends Bot {
 		if (!rc.hasMoved()) {
 			moveAwayFromLastSpawn();
 		}
-
+		if (!rc.hasMoved()) {
+			moveAwayFromWall();
+		}
 	}
 
 	private void moveAwayFromLastSpawn() throws GameActionException {
 		if (rc.getLocation().distanceTo(lastSpawn) <= 6) {
 			this.moveInUnexploredDirection(0);
 		}
+	}
+
+	private Direction getDirAwayFromWall() throws GameActionException {
+		MapLocation myLoc = rc.getLocation();
+		if (!rc.onTheMap(myLoc.add(Direction.EAST, 4))) {
+			return Direction.WEST;
+		}
+		if (!rc.onTheMap(myLoc.add(Direction.WEST, 4))) {
+			return Direction.EAST;
+		}
+		if (!rc.onTheMap(myLoc.add(Direction.NORTH, 4))) {
+			return Direction.SOUTH;
+		}
+		if (!rc.onTheMap(myLoc.add(Direction.SOUTH, 4))) {
+			return Direction.NORTH;
+		}
+		return this.getRandomDirection();
+	}
+
+	private void moveAwayFromWall() throws GameActionException {
+		Direction dir = getDirAwayFromWall();
+		if (dir == null) {
+			return;
+		}
+		this.makeMove(dir);
 	}
 
 }

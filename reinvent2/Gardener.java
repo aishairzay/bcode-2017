@@ -1,4 +1,4 @@
-package PrimarySoldier;
+package reinvent2;
 
 import battlecode.common.*;
 
@@ -6,10 +6,19 @@ public strictfp class Gardener extends Bot {
 	private boolean stationary;
 	private int buildCount;
 
+	Direction[] plantingDirections;
+
 	public Gardener(RobotController rc) throws GameActionException {
 		super(rc);
 		stationary = false;
 		buildCount = 0;
+		plantingDirections = new Direction[6];
+		Direction initial = Direction.getNorth();
+		for (int i = 0; i < 6; i++) {
+			int rotation = 360 / 6;
+			Direction rotated = initial.rotateRightDegrees(rotation * i);
+			plantingDirections[i] = rotated;
+		}
 	}
 
 	@Override
@@ -26,10 +35,31 @@ public strictfp class Gardener extends Bot {
 		shake();
 	}
 
+	private Direction getDirAwayFromWall() throws GameActionException {
+		MapLocation myLoc = rc.getLocation();
+		if (!rc.onTheMap(myLoc.add(Direction.EAST, 5))) {
+			return Direction.WEST;
+		}
+		if (!rc.onTheMap(myLoc.add(Direction.WEST, 5))) {
+			return Direction.EAST;
+		}
+		if (!rc.onTheMap(myLoc.add(Direction.NORTH, 5))) {
+			return Direction.SOUTH;
+		}
+		if (!rc.onTheMap(myLoc.add(Direction.SOUTH, 5))) {
+			return Direction.NORTH;
+		}
+		return this.getRandomDirection();
+	}
+
 	private boolean buildEarlyUnits() throws GameActionException {
-		if (buildCount < 2) {
+		if (buildCount < 2 || !rc.onTheMap(rc.getLocation(), 4)) {
 			if (this.countNearbyOpenSquares(true) <= 4) {
-				this.makeMove(this.getRandomDirection());
+				Direction awayFromWall = getDirAwayFromWall();
+				if (awayFromWall != null) {
+					this.makeMove(awayFromWall);
+					this.unexploredDir = this.getRandomDirection();
+				}
 			}
 		}
 		if (buildCount == 0) {
@@ -61,7 +91,6 @@ public strictfp class Gardener extends Bot {
 	// one wasn't doing that.
 	private void waterTrees() throws GameActionException {
 		TreeInfo[] trees = rc.senseNearbyTrees(3, myTeam);
-		System.out.println("Amount of trees: " + trees.length);
 		TreeInfo lowestHealth = null;
 		for (TreeInfo tree : trees) {
 			if (rc.canWater(tree.ID)) {
@@ -89,29 +118,30 @@ public strictfp class Gardener extends Bot {
 			}
 		}
 		for (RobotInfo e : enemies) {
-			if (e.type != RobotType.ARCHON && e.type != RobotType.LUMBERJACK) {
+			if (e.type != RobotType.ARCHON && e.type != RobotType.GARDENER) {
 				enemyCount++;
 			}
 		}
+		//System.out.println("We have " + enemyCount + " enemies and " + allyCount + "allies");
 		if (enemyCount >= allyCount) {
-			buildUnit(RobotType.LUMBERJACK);
+			//System.out.println("Got past check.");
+			if (rc.isBuildReady() && rc.hasRobotBuildRequirements(RobotType.LUMBERJACK)) {
+				//System.out.println("Attempting to build unit");
+				buildUnit(RobotType.LUMBERJACK);
+			}
 			return;
 		}
 		int openSquares = countNearbyOpenSquares(true);
-		System.out.println("Counted this many open squares: " + openSquares);
-		if (openSquares <= 1) {
-			buildUnit(RobotType.TANK);
-			if (rc.isBuildReady()) {
-				buildUnit(RobotType.SOLDIER);
-			}
-		} else if (openSquares > 1) {
+		if (openSquares > 1) {
 			this.plantTree();
 		}
-		if (rc.isBuildReady() && rc.hasRobotBuildRequirements(RobotType.TANK)) {
-			buildUnit(RobotType.TANK);
+		if (rc.getRoundNum() >= 100 && rand.nextBoolean() && rand.nextBoolean() && rand.nextBoolean()) {
+			if (rc.isBuildReady() && rc.hasRobotBuildRequirements(RobotType.SCOUT)) {
+				buildUnit(RobotType.SCOUT);
+			}
 		}
-		if (rc.isBuildReady() && rc.hasRobotBuildRequirements(RobotType.SOLDIER)) {
-			buildUnit(RobotType.SOLDIER);
+		if (rc.isBuildReady() && rc.hasRobotBuildRequirements(RobotType.LUMBERJACK)) {
+			buildUnit(RobotType.LUMBERJACK);
 		}
 	}
 
@@ -125,18 +155,26 @@ public strictfp class Gardener extends Bot {
 				if (rc.canBuildRobot(type, dir)) {
 					rc.buildRobot(type, dir);
 					buildCount++;
-					break;
+					return;
 				}
 				dir = dir.rotateRightDegrees(45);
+			}
+			int initial = rand.nextInt(6);
+			for (int i = 0; i < 6; i++) {
+				Direction rotated = plantingDirections[(initial + i) % 6];
+				if (rc.canBuildRobot(type, rotated)) {
+					rc.buildRobot(type, rotated);
+					buildCount++;
+					return;
+				}
 			}
 		}
 	}
 
 	private void plantTree() throws GameActionException {
-		Direction initial = Direction.getNorth();
+		int initial = rand.nextInt(6);
 		for (int i = 0; i < 6; i++) {
-			int rotation = 360 / 6;
-			Direction rotated = initial.rotateRightDegrees(rotation * i);
+			Direction rotated = plantingDirections[(initial + i) % 6];
 			if (rc.canPlantTree(rotated)) {
 				rc.plantTree(rotated);
 				break;

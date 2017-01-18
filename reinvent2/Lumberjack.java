@@ -1,7 +1,8 @@
-package PrimarySoldier;
+package reinvent2;
 
 import battlecode.common.Direction;
 import battlecode.common.GameActionException;
+import battlecode.common.GameConstants;
 import battlecode.common.MapLocation;
 import battlecode.common.RobotController;
 import battlecode.common.RobotInfo;
@@ -27,12 +28,12 @@ public strictfp class Lumberjack extends Bot {
 	public void run() throws GameActionException {
 		roundsAlive++;
 		if (!attacking && roundsAlive > 75 && rc.getRoundNum() % 100 == 0) {
-			// attacking = true;
+			attacking = true;
 		}
 		TreeInfo[] trees = rc.senseNearbyTrees(myType.sensorRadius, Team.NEUTRAL);
 		RobotInfo[] enemies = rc.senseNearbyRobots(myType.sensorRadius, enemyTeam);
-		chop(trees);
 		boolean shouldMove = false;
+		finalChop(trees);
 		if (!rc.hasMoved()) {
 			shouldMove = micro(enemies);
 		}
@@ -51,8 +52,19 @@ public strictfp class Lumberjack extends Bot {
 				this.moveInUnexploredDirection(0);
 			}
 		}
-		chop(trees);
+		if (!rc.hasAttacked()) {
+			chop(trees);
+		}
 		shake();
+	}
+
+	private void finalChop(TreeInfo[] trees) throws GameActionException {
+		for (TreeInfo tree : trees) {
+			if (rc.canChop(tree.ID) && tree.health <= GameConstants.LUMBERJACK_CHOP_DAMAGE
+					&& tree.containedRobot != null) {
+				rc.chop(tree.ID);
+			}
+		}
 	}
 
 	private void moveToEnemyLoc() throws GameActionException {
@@ -77,6 +89,11 @@ public strictfp class Lumberjack extends Bot {
 		}
 		TreeInfo first = trees[0];
 		if (home.distanceTo(first.location) > RobotType.LUMBERJACK.sensorRadius) {
+			for (TreeInfo tree : trees) {
+				if (tree.containedRobot != null) {
+					this.makeMove(rc.getLocation().directionTo(first.location));
+				}
+			}
 			return;
 		}
 		this.makeMove(rc.getLocation().directionTo(first.location));
@@ -107,8 +124,19 @@ public strictfp class Lumberjack extends Bot {
 	}
 
 	private void chop(TreeInfo[] trees) throws GameActionException {
-		if (trees.length > 0 && rc.canChop(trees[0].ID)) {
-			rc.chop(trees[0].ID);
+		TreeInfo toChop = null;
+		for (TreeInfo tree : trees) {
+			if (rc.canChop(tree.ID)) {
+				if (toChop == null) {
+					toChop = tree;
+				} else if (tree.containedRobot != null) {
+					toChop = tree;
+					break;
+				}
+			}
+		}
+		if (toChop != null) {
+			rc.chop(toChop.ID);
 		}
 	}
 
@@ -127,7 +155,7 @@ public strictfp class Lumberjack extends Bot {
 			MapLocation loc = rc.getLocation().add(dir);
 			float distToHome = loc.distanceTo(home);
 			Integer score = getScore(dir);
-			System.out.println("Got score : " + i + ", " + score);
+			//System.out.println("Got score : " + i + ", " + score);
 			if (score == null || score <= 0) {
 				continue;
 			}
@@ -147,7 +175,7 @@ public strictfp class Lumberjack extends Bot {
 		int curScore = getScore(null);
 		float dist = rc.getLocation().distanceTo(home);
 
-		System.out.println("Moving this way: " + next);
+		//System.out.println("Moving this way: " + next);
 		// goal here is to move to location with best score.
 		// attack before moving if current location has better score.
 		// move then attack if new location has best score.
@@ -176,7 +204,7 @@ public strictfp class Lumberjack extends Bot {
 	}
 
 	private void strike(Integer score) throws GameActionException {
-		if (score < 0 && rc.getRoundLimit() - rc.getRoundNum() > 100) {
+		if (score < 0 && rc.getRoundLimit() - rc.getRoundNum() > 200) {
 			return;
 		}
 		if (rc.canStrike()) {
@@ -210,8 +238,8 @@ public strictfp class Lumberjack extends Bot {
 		if (enemies.length > 0) {
 			score++;
 		}
-		System.out.println("ally length: " + allies.length);
-		System.out.println("enemy length: " + enemies.length);
+		//System.out.println("ally length: " + allies.length);
+		//System.out.println("enemy length: " + enemies.length);
 		score += enemies.length;
 		score -= allies.length;
 		// System.out.println("Got score: " + score);

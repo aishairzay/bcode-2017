@@ -1,4 +1,4 @@
-package PrimarySoldier;
+package reinvent;
 
 import java.util.Random;
 
@@ -220,8 +220,20 @@ public strictfp abstract class Bot {
 		}
 	}
 
-	protected boolean isHostile(RobotType type) {
-		return type == RobotType.LUMBERJACK || type == RobotType.SCOUT || type == RobotType.SOLDIER
-				|| type == RobotType.TANK;
+	protected int getBulletDangerScore(MapLocation loc, BulletInfo[] bullets, int bytecodeLimit) {
+		int bytecodeStart = Clock.getBytecodeNum();
+		int score = 0;
+		for (int i = 0; i < bullets.length; i++) {
+			if (Clock.getBytecodeNum() - bytecodeStart >= bytecodeLimit) {
+				break;
+			}
+			BulletInfo bullet = bullets[i];
+			MapLocation bulletLoc = bullet.location;
+			int steps = 0;
+			while (steps < bullet.speed) {
+				steps++;
+			}
+		}
+		return score;
 	}
 }

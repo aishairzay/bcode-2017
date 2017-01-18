@@ -1,4 +1,4 @@
-package PrimarySoldier;
+package reinvent2;
 
 import battlecode.common.Direction;
 import battlecode.common.GameActionException;
@@ -14,13 +14,13 @@ public strictfp class Archon extends Bot {
 	public Archon(RobotController rc) throws GameActionException {
 		super(rc);
 		gardnerCount = 1;
-		lastSpawn = rc.getLocation();
 		isLeader = home.equals(rc.getLocation());
 	}
 
 	public void run() throws GameActionException {
 		build();
 		micro();
+		shake();
 	}
 
 	// ----------------------------------------------------------------------
@@ -33,28 +33,19 @@ public strictfp class Archon extends Bot {
 	}
 
 	private boolean shouldBuildGardner() throws GameActionException {
-		if (!isLeader && rc.getRoundNum() <= 50) {
+		if (!isLeader && rc.getRoundNum() <= 40) {
 			return false;
 		}
-		if (isLeader) {
-			if (rc.getRoundNum() <= 1) {
-				return true;
-			}
-		}
-		boolean needNewGardener = rc.readBroadcast(Channels.GARDENER_IS_SETUP) > 0;
-		if (needNewGardener) {
-			rc.broadcast(Channels.GARDENER_IS_SETUP, 0);
+		if (isLeader && rc.getRoundNum() <= 1) {
 			return true;
 		}
-		if ((rc.getRoundNum() % Constants.GARDNER_PING_RATE) == 2) {
+		if ((rc.getRoundNum() % Constants.GARDNER_PING_RATE) == 1) {
 			gardnerCount = rc.readBroadcast(Channels.GARDENER_PING_CHANNEL);
+		} else if (rc.getRoundNum() % Constants.GARDNER_PING_RATE == 2) {
 			rc.broadcast(Channels.GARDENER_PING_CHANNEL, -1);
-			if (gardnerCount <= Constants.MAX_GARDNER_COUNT) {
-				hireGardner();
-			}
 		}
-		if (rc.getRoundNum() > 100 && rc.getTeamBullets() >= 125 && gardnerCount <= Constants.MAX_GARDNER_COUNT) {
-			hireGardner();
+		if (rc.getRoundNum() >= 21 && rc.getTeamBullets() >= 115 && gardnerCount <= Constants.MAX_GARDNER_COUNT) {
+			return true;
 		}
 		return false;
 	}
@@ -84,6 +75,9 @@ public strictfp class Archon extends Bot {
 	}
 
 	private void moveAwayFromLastSpawn() throws GameActionException {
+		if (lastSpawn == null) {
+			return;
+		}
 		if (rc.getLocation().distanceTo(lastSpawn) <= 6) {
 			this.moveInUnexploredDirection(0);
 		}

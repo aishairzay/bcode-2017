@@ -1,4 +1,4 @@
-package PrimarySoldier;
+package Fourth;
 
 import java.util.Random;
 
@@ -167,43 +167,9 @@ public strictfp abstract class Bot {
 		}
 	}
 
-	protected void moveTowardsUnshookTrees() throws GameActionException {
-		TreeInfo[] trees = rc.senseNearbyTrees(myType.sensorRadius, Team.NEUTRAL);
-		TreeInfo closest = null;
-		for (TreeInfo tree : trees) {
-			if (tree.team != Team.NEUTRAL) {
-				continue;
-			}
-			if (myType != RobotType.SCOUT && myType.strideRadius < tree.radius) {
-				continue;
-			}
-			boolean visited = rc.readBroadcast(this.getTreeChannel(tree.ID)) > 0;
-			if (visited) {
-				continue;
-			}
-			if (closest == null) {
-				closest = tree;
-			} else if (rc.getLocation().distanceSquaredTo(tree.location) < rc.getLocation()
-					.distanceSquaredTo(closest.location)) {
-				closest = tree;
-			}
-		}
-		System.out.println("Got closest tree: " + null);
-		if (closest == null) {
-			return;
-		}
-		if (rc.canMove(closest.location)) {
-			rc.move(closest.location);
-		} else {
-			Direction dir = rc.getLocation().directionTo(closest.location);
-			makeMove(dir);
-		}
-		rc.setIndicatorLine(rc.getLocation(), closest.location, 200, 0, 0);
-	}
-
-	protected void moveInUnexploredDirection(int tries) throws GameActionException {
+	protected boolean moveInUnexploredDirection(int tries) throws GameActionException {
 		if (tries == 8) {
-			return;
+			return false;
 		}
 		if (unexploredDir == null) {
 			unexploredDir = getRandomDirection();
@@ -214,14 +180,28 @@ public strictfp abstract class Bot {
 		}
 		if (rc.canMove(unexploredDir)) {
 			makeMove(unexploredDir);
+			return true;
 		} else {
 			unexploredDir = this.getRandomDirection();
-			moveInUnexploredDirection(tries + 1);
+			return moveInUnexploredDirection(tries + 1);
 		}
 	}
 
-	protected boolean isHostile(RobotType type) {
-		return type == RobotType.LUMBERJACK || type == RobotType.SCOUT || type == RobotType.SOLDIER
-				|| type == RobotType.TANK;
+	protected boolean bulletPathClear(MapLocation source, RobotInfo toAttack) throws GameActionException {
+		MapLocation dest = toAttack.location;
+		Direction towardsEnemy = source.directionTo(dest);
+		MapLocation iter = source.add(towardsEnemy, rc.getType().bodyRadius + 1);
+		while (dest.distanceTo(iter) >= 1) {
+			RobotInfo r = rc.senseRobotAtLocation(iter);
+			TreeInfo t = rc.senseTreeAtLocation(iter);
+			if (r != null && r.equals(toAttack.location)) {
+				return true;
+			}
+			if (t != null) {
+				return false;
+			}
+			iter = iter.add(towardsEnemy, 1);
+		}
+		return dest.distanceTo(iter) <= 1;
 	}
 }

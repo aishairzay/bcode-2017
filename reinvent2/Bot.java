@@ -1,4 +1,4 @@
-package PrimarySoldier;
+package reinvent2;
 
 import java.util.Random;
 
@@ -77,7 +77,7 @@ public strictfp abstract class Bot {
 				if (rc.canShake(tree.ID)) {
 					rc.shake(tree.ID);
 					int channel = this.getTreeChannel(tree.ID);
-					System.out.println("Got this channel: " + channel);
+					// System.out.println("Got this channel: " + channel);
 					rc.broadcast(channel, 1);
 					break;
 				}
@@ -126,7 +126,8 @@ public strictfp abstract class Bot {
 	}
 
 	protected int getTreeChannel(int treeId) {
-		treeId = (treeId % 400) + 599;
+		treeId = (treeId % 800) + 199; // sets tree broadcast channel between
+										// 200 and 1000
 		return treeId;
 	}
 
@@ -171,7 +172,7 @@ public strictfp abstract class Bot {
 		TreeInfo[] trees = rc.senseNearbyTrees(myType.sensorRadius, Team.NEUTRAL);
 		TreeInfo closest = null;
 		for (TreeInfo tree : trees) {
-			if (tree.team != Team.NEUTRAL) {
+			if (tree.team != Team.NEUTRAL || tree.containedBullets <= 1) {
 				continue;
 			}
 			if (myType != RobotType.SCOUT && myType.strideRadius < tree.radius) {
@@ -188,7 +189,6 @@ public strictfp abstract class Bot {
 				closest = tree;
 			}
 		}
-		System.out.println("Got closest tree: " + null);
 		if (closest == null) {
 			return;
 		}
@@ -220,8 +220,41 @@ public strictfp abstract class Bot {
 		}
 	}
 
-	protected boolean isHostile(RobotType type) {
-		return type == RobotType.LUMBERJACK || type == RobotType.SCOUT || type == RobotType.SOLDIER
-				|| type == RobotType.TANK;
+	protected int getBulletDangerScore(MapLocation loc, BulletInfo[] bullets, int bytecodeLimit) {
+		int bytecodeStart = Clock.getBytecodeNum();
+		int score = 0;
+		for (int i = 0; i < bullets.length; i++) {
+			if (Clock.getBytecodeNum() - bytecodeStart >= bytecodeLimit) {
+				break;
+			}
+			BulletInfo bullet = bullets[i];
+			MapLocation bulletLoc = bullet.location;
+			int steps = 0;
+			while (steps < bullet.speed) {
+				steps++;
+			}
+		}
+		return score;
+	}
+
+	protected boolean bulletPathClear(MapLocation source, RobotInfo toAttack) throws GameActionException {
+		MapLocation dest = toAttack.location;
+		Direction towardsEnemy = source.directionTo(dest);
+		MapLocation iter = source.add(towardsEnemy, rc.getType().bodyRadius + 1);
+		while (dest.distanceTo(iter) >= 1) {
+			if (!rc.canSenseLocation(iter)) {
+				return true;
+			}
+			RobotInfo r = rc.senseRobotAtLocation(iter);
+			TreeInfo t = rc.senseTreeAtLocation(iter);
+			if (r != null && r.equals(toAttack.location)) {
+				return true;
+			}
+			if (t != null) {
+				return false;
+			}
+			iter = iter.add(towardsEnemy, 1);
+		}
+		return dest.distanceTo(iter) <= 1;
 	}
 }

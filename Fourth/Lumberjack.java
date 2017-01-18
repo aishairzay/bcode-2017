@@ -1,4 +1,4 @@
-package PrimarySoldier;
+package Fourth;
 
 import battlecode.common.Direction;
 import battlecode.common.GameActionException;
@@ -27,7 +27,7 @@ public strictfp class Lumberjack extends Bot {
 	public void run() throws GameActionException {
 		roundsAlive++;
 		if (!attacking && roundsAlive > 75 && rc.getRoundNum() % 100 == 0) {
-			// attacking = true;
+			attacking = true;
 		}
 		TreeInfo[] trees = rc.senseNearbyTrees(myType.sensorRadius, Team.NEUTRAL);
 		RobotInfo[] enemies = rc.senseNearbyRobots(myType.sensorRadius, enemyTeam);
@@ -51,7 +51,13 @@ public strictfp class Lumberjack extends Bot {
 				this.moveInUnexploredDirection(0);
 			}
 		}
+		RobotInfo[] enemyRobots = rc.senseNearbyRobots(rc.getLocation(), myType.bodyRadius + 1, enemyTeam);
+		RobotInfo[] allies = rc.senseNearbyRobots(rc.getLocation(), myType.bodyRadius + 1, myTeam);
+		if (allies.length == 0 && enemyRobots.length > 0 && !rc.hasAttacked()) {
+			rc.strike();
+		}
 		chop(trees);
+
 		shake();
 	}
 
@@ -176,7 +182,7 @@ public strictfp class Lumberjack extends Bot {
 	}
 
 	private void strike(Integer score) throws GameActionException {
-		if (score < 0 && rc.getRoundLimit() - rc.getRoundNum() > 100) {
+		if (score < -1) {
 			return;
 		}
 		if (rc.canStrike()) {
@@ -214,7 +220,7 @@ public strictfp class Lumberjack extends Bot {
 		System.out.println("enemy length: " + enemies.length);
 		score += enemies.length;
 		score -= allies.length;
-		// System.out.println("Got score: " + score);
+
 		return score;
 	}
 

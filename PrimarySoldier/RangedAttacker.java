@@ -5,10 +5,16 @@ import battlecode.common.*;
 public abstract strictfp class RangedAttacker extends Bot {
 
 	boolean defender;
+	int steps;
+	Movement mover;
+	boolean reached;
 
 	public RangedAttacker(RobotController rc) {
 		super(rc);
 		defender = false;
+		mover = new Movement(rc);
+		steps = 0;
+		reached = false;
 	}
 
 	@Override
@@ -18,26 +24,26 @@ public abstract strictfp class RangedAttacker extends Bot {
 		RobotInfo[] allies = rc.senseNearbyRobots(myType.sensorRadius, myTeam);
 
 		if (enemies.length > 0) {
-			AttackInfo info = getMoveDir(allies, enemies, bullets);
-			boolean shouldAttack = info.score > -10;
-			Direction towardsEnemy = rc.getLocation().directionTo(info.attackLoc);
-			if (info.moveDir == null) {
-				attack(info.attackLoc, shouldAttack);
-			} else {
-				float diff = towardsEnemy.degreesBetween(info.moveDir);
-				if (diff > -90 && diff < 90) {
-					rc.move(info.moveDir);
-					attack(info.attackLoc, shouldAttack);
-				} else {
-					attack(info.attackLoc, shouldAttack);
-					rc.move(info.moveDir);
-				}
-			}
+			attackAndMove(allies, enemies, bullets);
 		} else {
 			if (defender) {
 				defend();
 			} else {
-				this.moveInUnexploredDirection(0);
+
+				if (!reached) {
+					if (rc.getLocation().distanceTo(enemyLoc) <= 2) {
+						reached = true;
+					}
+					mover.setDestination(enemyLoc);
+					mover.move();
+					if (!rc.hasMoved()) {
+						this.moveInUnexploredDirection(0);
+					}
+				} else {
+					if (!rc.hasMoved()) {
+						this.moveInUnexploredDirection(0);
+					}
+				}
 			}
 		}
 	}
@@ -55,90 +61,143 @@ public abstract strictfp class RangedAttacker extends Bot {
 		}
 	}
 
-	private AttackInfo getMoveDir(RobotInfo[] allies, RobotInfo[] enemies, BulletInfo[] bullets) {
+	private void attackAndMove(RobotInfo[] allies, RobotInfo[] enemies, BulletInfo[] bullets)
+			throws GameActionException {
 
-		Direction toMove = null;
-		RobotInfo closestThreat = findClosestThreat(enemies);
-		if (closestThreat == null) {
-			closestThreat = enemies[0];
-		}
-		float bestScore = getScore(rc.getLocation(), allies, closestThreat);
-		for (Direction dir : this.directions) {
-			if (!rc.canMove(dir, myType.strideRadius)) {
-				continue;
-			}
-			float score = getScore(rc.getLocation().add(myType.strideRadius), allies, closestThreat);
-			if (score > bestScore) {
-				bestScore = score;
-				toMove = dir;
-			}
-		}
-		AttackInfo info = new AttackInfo(closestThreat.location, toMove, bestScore);
-		return info;
-	}
-
-	private RobotInfo findClosestThreat(RobotInfo[] enemies) {
-		RobotInfo closest = null;
+		RobotInfo toAttack = null;
+		// Loop through all threatening enemies, find closest that i can shoot.
 		for (RobotInfo enemy : enemies) {
-			if (enemy.type == RobotType.ARCHON || enemy.type == RobotType.GARDENER) {
-				continue;
-			}
-			if (closest == null) {
-				closest = enemy;
+			if (isHostile(enemy.type) && this.bulletPathIsClear(rc.getLocation(), enemy.location, enemy.type)) {
+				toAttack = enemy;
 				break;
 			}
 		}
-		return closest;
-	}
-
-	private float getScore(MapLocation loc, RobotInfo[] allies, RobotInfo enemy) {
-		rc.setIndicatorDot(loc, 0, 0, 200);
-		rc.setIndicatorDot(enemy.location, 200, 0, 0);
-		float score = 0;
-		float dist = loc.distanceTo(enemy.location);
-		if (enemy.type == RobotType.LUMBERJACK && dist < enemy.type.strideRadius + 1) {
-			score -= myType.sensorRadius;
-		}
-		if (enemy.type == RobotType.ARCHON || enemy.type == RobotType.GARDENER) {
-			score -= loc.distanceTo(enemy.location);
-		}
-		if (enemy.type == RobotType.SOLDIER || enemy.type == RobotType.TANK) {
-			score += loc.distanceTo(enemy.location);
-		}
-		if (enemy.type == RobotType.SCOUT) {
-			score -= loc.distanceSquaredTo(enemy.location) / 2;
-		}
-		Direction dir = rc.getLocation().directionTo(enemy.location);
-		for (RobotInfo ally : allies) {
-			if (dir.degreesBetween(rc.getLocation().directionTo(ally.location)) < 30) {
-				if (rc.getLocation().distanceTo(ally.location) < rc.getLocation().distanceTo(enemy.location)) {
-					score -= 10;
+		if (toAttack == null) {
+			for (RobotInfo enemy : enemies) {
+				if (!isHostile(enemy.type) && this.bulletPathIsClear(rc.getLocation(), enemy.location, enemy.type)) {
+					toAttack = enemy;
+					break;
 				}
 			}
 		}
-		Direction enemyDir = rc.getLocation().directionTo(enemy.location);
-		Direction towardsLoc = rc.getLocation().directionTo(loc);
-		if (towardsLoc == null) {
-			return score;
+		Direction towardsEnemy = rc.getLocation().directionTo(toAttack.location);
+
+		Direction moveDir = findMoveDir(toAttack);
+
+		if (moveDir == null) {
+			attack(toAttack);
+			return;
 		}
-		if (enemyDir.degreesBetween(towardsLoc) > 70 && enemyDir.degreesBetween(towardsLoc) < 110) {
-			if (enemy.type == RobotType.SOLDIER || enemy.type == RobotType.TANK) {
-				score += 5;
+
+		float diff = towardsEnemy.degreesBetween(moveDir);
+		if (diff > -90 && diff < 90) {
+			rc.move(moveDir, myType.strideRadius);
+			attack(toAttack);
+		} else {
+			attack(toAttack);
+			rc.move(moveDir, myType.strideRadius);
+		}
+
+		// if didn't find one, loop through all enemies and find closest I can
+		// shoot.
+	}
+
+	private Direction findMoveDir(RobotInfo toAttack) throws GameActionException {
+		Direction towards = rc.getLocation().directionTo(toAttack.location);
+		if (rc.getLocation().distanceTo(toAttack.location) <= myType.bodyRadius + 2 + toAttack.type.bodyRadius) {
+			shoot(5, towards);
+		}
+
+		int bestScore = 0;
+		Direction best = null;
+		for (int i = 0; i < 7; i++) {
+			int score = 100;
+			towards = towards.rotateRightDegrees(45);
+			MapLocation next = rc.getLocation().add(towards);
+			if (!rc.canMove(towards, myType.strideRadius)) {
+				continue;
+			}
+			if (toAttack.health <= 4 && next.distanceTo(toAttack.location) < 3) {
+				score += 100;
+			}
+			if (toAttack.type == RobotType.LUMBERJACK) {
+				score += next.distanceTo(toAttack.location);
+			}
+			if (this.isHostile(toAttack.type)) {
+				if (i == 2 || i == 6) {
+					score += 10;
+				}
+				if (i == 7 || i == 1) {
+					score += 5;
+				}
+				if (i == 3 || i == 5) {
+					score += 7;
+				}
+				if (rc.getHealth() <= 15) {
+					score += next.distanceTo(toAttack.location);
+				}
+			} else {
+				score -= next.distanceTo(toAttack.location);
+			}
+			if (score > bestScore) {
+				bestScore = score;
+				best = towards;
 			}
 		}
-		return score;
+		return best;
+	}
+
+	private void attack(RobotInfo toAttack) throws GameActionException {
+		Direction towards = rc.getLocation().directionTo(toAttack.location);
+		if (rc.getLocation().distanceTo(toAttack.location) <= myType.bodyRadius + 2 + toAttack.type.bodyRadius) {
+			shoot(5, towards);
+		}
+		if (isHostile(toAttack.type)) {
+			shoot(3, towards);
+		} else {
+			shoot(1, towards);
+		}
+	}
+
+	private void shoot(int type, Direction dir) throws GameActionException {
+		if (type >= 5) {
+			if (rc.canFirePentadShot()) {
+				rc.firePentadShot(dir);
+			}
+		}
+		if (type >= 3) {
+			if (rc.canFireTriadShot()) {
+				rc.fireTriadShot(dir);
+			}
+		}
+		if (rc.canFireSingleShot()) {
+			rc.fireSingleShot(dir);
+		}
+	}
+
+	private boolean bulletPathIsClear(MapLocation source, MapLocation dest, RobotType type) throws GameActionException {
+		Direction towards = source.directionTo(dest);
+		Direction opposite = towards.opposite();
+		while (source.distanceTo(dest) > type.bodyRadius) {
+			rc.setIndicatorLine(source, source.add(towards), 0, 0, 200);
+			if (rc.senseRobotAtLocation(source) != null && rc.senseTreeAtLocation(source) != null) {
+				return false;
+			}
+			source = source.add(towards, 1);
+		}
+		return true;
 	}
 
 	private void defend() {
 
 	}
 
-	private void moveTowardsEnemy() {
-
-	}
-
-	private void setDestination() {
-
+	private void moveToEnemyLoc() throws GameActionException {
+		if (steps > 75) {
+			return;
+		}
+		this.makeMove(rc.getLocation().directionTo(this.enemyLoc));
+		steps++;
 	}
 
 	private class AttackInfo {
@@ -152,4 +211,5 @@ public abstract strictfp class RangedAttacker extends Bot {
 			this.score = score;
 		}
 	}
+
 }

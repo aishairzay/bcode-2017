@@ -1,15 +1,19 @@
-package PrimarySoldier;
+package Fourth;
 
 import battlecode.common.*;
 
 public strictfp class Gardener extends Bot {
-	private boolean stationary;
 	private int buildCount;
+	private Direction[] plantingDirections;
 
 	public Gardener(RobotController rc) throws GameActionException {
 		super(rc);
-		stationary = false;
 		buildCount = 0;
+		float rotate = 360 / 6;
+		Direction north = Direction.NORTH;
+		plantingDirections = new Direction[] { north, north.rotateRightDegrees(rotate * 1),
+				north.rotateRightDegrees(rotate * 2), north.rotateRightDegrees(rotate * 3),
+				north.rotateRightDegrees(rotate * 4), north.rotateRightDegrees(rotate * 5) };
 	}
 
 	@Override
@@ -26,20 +30,38 @@ public strictfp class Gardener extends Bot {
 		shake();
 	}
 
+	private Direction getDirAwayFromWall() throws GameActionException {
+		MapLocation myLoc = rc.getLocation();
+		if (!rc.onTheMap(myLoc.add(Direction.EAST, 4))) {
+			return Direction.WEST;
+		}
+		if (!rc.onTheMap(myLoc.add(Direction.WEST, 4))) {
+			return Direction.EAST;
+		}
+		if (!rc.onTheMap(myLoc.add(Direction.NORTH, 4))) {
+			return Direction.SOUTH;
+		}
+		if (!rc.onTheMap(myLoc.add(Direction.SOUTH, 4))) {
+			return Direction.NORTH;
+		}
+		return this.getRandomDirection();
+	}
+
 	private boolean buildEarlyUnits() throws GameActionException {
-		if (buildCount < 2) {
+		RobotInfo[] enemies = rc.senseNearbyRobots(myType.sensorRadius, enemyTeam);
+		if (buildCount < 2 || !rc.onTheMap(rc.getLocation(), 3)) {
 			if (this.countNearbyOpenSquares(true) <= 4) {
-				this.makeMove(this.getRandomDirection());
+				Direction awayFromWall = getDirAwayFromWall();
+				if (awayFromWall != null) {
+					this.makeMove(awayFromWall);
+				}
 			}
 		}
 		if (buildCount == 0) {
 			this.buildUnit(RobotType.SCOUT);
 			return false;
-		} else if (buildCount == 1) {
-			this.buildUnit(RobotType.LUMBERJACK);
-			return false;
-		} else {
-			RobotInfo[] allies = rc.senseNearbyRobots(myType.sensorRadius);
+		} else if (buildCount >= 1) {
+			RobotInfo[] allies = rc.senseNearbyRobots(myType.sensorRadius, myTeam);
 			boolean hasLumberjack = false;
 			for (RobotInfo ally : allies) {
 				if (ally.type == RobotType.LUMBERJACK) {
@@ -47,9 +69,37 @@ public strictfp class Gardener extends Bot {
 					break;
 				}
 			}
-			if (!hasLumberjack) {
+			MapLocation closestEnemyArchon = enemyArchons[0];
+			for (MapLocation archon : enemyArchons) {
+				if (rc.getLocation().distanceTo(archon) < rc.getLocation().distanceTo(closestEnemyArchon)) {
+					closestEnemyArchon = archon;
+				}
+			}
+			float dist = rc.getLocation().distanceTo(closestEnemyArchon);
+
+			if (rc.getRoundNum() <= 50 && enemies.length > 0) {
 				this.buildUnit(RobotType.LUMBERJACK);
 				return false;
+			} else if (rc.getRoundNum() > 50 && !hasLumberjack) {
+				this.buildUnit(RobotType.LUMBERJACK);
+				return false;
+			}
+
+			if (dist < 50) {
+				if (buildCount == 1) {
+					this.buildUnit(RobotType.LUMBERJACK);
+					return false;
+				}
+				return true;
+			} else {
+				if (buildCount > 0 && buildCount < 3) {
+					this.plantTree();
+					return false;
+				} else if (buildCount == 4) {
+					this.buildUnit(RobotType.LUMBERJACK);
+					return false;
+				}
+				return true;
 			}
 		}
 		return true;
@@ -84,7 +134,7 @@ public strictfp class Gardener extends Bot {
 		int allyCount = 0;
 		int enemyCount = 0;
 		for (RobotInfo t : teammates) {
-			if (t.type == RobotType.LUMBERJACK) {
+			if (t.type != RobotType.ARCHON && t.type == RobotType.GARDENER) {
 				allyCount++;
 			}
 		}
@@ -99,19 +149,19 @@ public strictfp class Gardener extends Bot {
 		}
 		int openSquares = countNearbyOpenSquares(true);
 		System.out.println("Counted this many open squares: " + openSquares);
-		if (openSquares <= 1) {
-			buildUnit(RobotType.TANK);
-			if (rc.isBuildReady()) {
-				buildUnit(RobotType.SOLDIER);
-			}
-		} else if (openSquares > 1) {
+		if (openSquares > 1) {
 			this.plantTree();
+		}
+		if (buildCount % 10 == 0) {
+			if (rc.isBuildReady() && rc.hasRobotBuildRequirements(RobotType.SCOUT)) {
+				buildUnit(RobotType.SCOUT);
+			}
 		}
 		if (rc.isBuildReady() && rc.hasRobotBuildRequirements(RobotType.TANK)) {
 			buildUnit(RobotType.TANK);
 		}
-		if (rc.isBuildReady() && rc.hasRobotBuildRequirements(RobotType.SOLDIER)) {
-			buildUnit(RobotType.SOLDIER);
+		if (rc.isBuildReady() && rc.hasRobotBuildRequirements(RobotType.LUMBERJACK)) {
+			buildUnit(RobotType.LUMBERJACK);
 		}
 	}
 
@@ -133,12 +183,13 @@ public strictfp class Gardener extends Bot {
 	}
 
 	private void plantTree() throws GameActionException {
-		Direction initial = Direction.getNorth();
+		Direction initial = this.plantingDirections[rand.nextInt(this.plantingDirections.length)];
 		for (int i = 0; i < 6; i++) {
 			int rotation = 360 / 6;
 			Direction rotated = initial.rotateRightDegrees(rotation * i);
 			if (rc.canPlantTree(rotated)) {
 				rc.plantTree(rotated);
+				this.buildCount++;
 				break;
 			}
 		}
