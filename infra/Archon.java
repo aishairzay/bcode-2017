@@ -1,25 +1,30 @@
-package Primary;
+package infra;
 
 import battlecode.common.Direction;
 import battlecode.common.GameActionException;
-import battlecode.common.GameConstants;
+import battlecode.common.MapLocation;
 import battlecode.common.RobotController;
+import battlecode.common.Team;
+import battlecode.common.TreeInfo;
 
 public strictfp class Archon extends Bot {
 
 	int gardnerCount;
+	boolean isLeader;
+	MapLocation lastSpawn;
 
 	public Archon(RobotController rc) throws GameActionException {
 		super(rc);
-		rc.donate(10);
 		gardnerCount = 1;
+		isLeader = home.equals(rc.getLocation());
 	}
 
 	public void run() throws GameActionException {
-		// System.out.println("Running archon now");
+		TreeInfo[] neutralTrees = rc.senseNearbyTrees(myType.sensorRadius, Team.NEUTRAL);
 		build();
 		micro();
-		shake();
+		this.moveTowardsUnshookTrees();
+		shake(neutralTrees);
 	}
 
 	// ----------------------------------------------------------------------
@@ -27,26 +32,24 @@ public strictfp class Archon extends Bot {
 	private void build() throws GameActionException {
 		boolean shouldBuildGardner = shouldBuildGardner();
 		if (shouldBuildGardner) {
-			// System.out.println("Trying to hire gardner now");
 			hireGardner();
 		}
 	}
 
 	private boolean shouldBuildGardner() throws GameActionException {
-		if (rc.getRoundNum() <= 9 && allyArchons[0].equals(rc.getLocation())) {
+		if (!isLeader && rc.getRoundNum() <= 40) {
+			return false;
+		}
+		if (isLeader && rc.getRoundNum() <= 1) {
 			return true;
 		}
-		boolean needNewGardener = rc.readBroadcast(Channels.GARDENER_IS_SETUP) > 0;
-		if (needNewGardener) {
-			rc.broadcast(Channels.GARDENER_IS_SETUP, 0);
-			return true;
-		}
-		if ((rc.getRoundNum() % Constants.GARDNER_PING_RATE) == 2) {
+		if ((rc.getRoundNum() % Constants.GARDENER_PING_RATE) == 1) {
 			gardnerCount = rc.readBroadcast(Channels.GARDENER_PING_CHANNEL);
+		} else if (rc.getRoundNum() % Constants.GARDENER_PING_RATE == 2) {
 			rc.broadcast(Channels.GARDENER_PING_CHANNEL, -1);
-			if (rc.getTeamBullets() >= 150 || gardnerCount <= Constants.MAX_GARDNER_COUNT) {
-				hireGardner();
-			}
+		}
+		if (rc.getRoundNum() >= 21 && rc.getTeamBullets() >= 115 && gardnerCount <= Constants.MAX_GARDNER_COUNT) {
+			return true;
 		}
 		return false;
 	}
@@ -58,6 +61,7 @@ public strictfp class Archon extends Bot {
 		for (Direction dir : directions) {
 			if (rc.canHireGardener(dir)) {
 				rc.hireGardener(dir);
+				lastSpawn = rc.getLocation().add(dir, 1);
 			}
 		}
 	}
@@ -66,18 +70,18 @@ public strictfp class Archon extends Bot {
 	// MICRO
 	private void micro() throws GameActionException {
 		if (!rc.hasMoved()) {
-			stayAlive();
+			moveAwayFromLastSpawn();
 		}
-		if (!rc.hasMoved()) {
-			moveTowardsUnshookTrees();
-		}
-		if (!rc.hasMoved()) {
-			moveInUnexploredDirection(0);
-		}
+
 	}
 
-	private void stayAlive() {
-
+	private void moveAwayFromLastSpawn() throws GameActionException {
+		if (lastSpawn == null) {
+			return;
+		}
+		if (rc.getLocation().distanceTo(lastSpawn) <= 6) {
+			this.moveInUnexploredDirection(0);
+		}
 	}
 
 }

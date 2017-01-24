@@ -23,7 +23,7 @@ public strictfp class RobotPlayer {
 				int currentRound = rc.getRoundNum();
 				float teamBullets = rc.getTeamBullets();
 
-				float victoryPointsAvailable = teamBullets / GameConstants.BULLET_EXCHANGE_RATE;
+				float victoryPointsAvailable = teamBullets / 10;
 				float victoryPointsNeeded = GameConstants.VICTORY_POINTS_TO_WIN - victoryPointsAvailable;
 				boolean canWin = rc.getTeamVictoryPoints() > victoryPointsNeeded;
 				if (currentRound >= rc.getRoundLimit() - 1 || canWin) {

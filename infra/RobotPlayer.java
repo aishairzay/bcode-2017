@@ -1,4 +1,4 @@
-package reinvent;
+package infra;
 
 import battlecode.common.*;
 
@@ -21,9 +21,11 @@ public strictfp class RobotPlayer {
 			}
 			while (true) {
 				int currentRound = rc.getRoundNum();
+				if (rc.getRoundNum() >= rc.getRoundLimit() - 200) {
+					rc.donate(rc.getTeamBullets());
+				}
 				float teamBullets = rc.getTeamBullets();
-
-				float victoryPointsAvailable = teamBullets / 10;
+				float victoryPointsAvailable = teamBullets / rc.getVictoryPointCost();
 				float victoryPointsNeeded = GameConstants.VICTORY_POINTS_TO_WIN - victoryPointsAvailable;
 				boolean canWin = rc.getTeamVictoryPoints() > victoryPointsNeeded;
 				if (currentRound >= rc.getRoundLimit() - 1 || canWin) {
