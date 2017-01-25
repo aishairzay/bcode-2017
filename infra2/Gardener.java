@@ -1,4 +1,4 @@
-package infra;
+package infra2;
 
 import battlecode.common.*;
 

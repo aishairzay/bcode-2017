@@ -1,4 +1,4 @@
-package infra;
+package infra2;
 
 import battlecode.common.*;
 
@@ -35,17 +35,12 @@ public abstract strictfp class RangedAttacker extends Bot {
 			closest = enemies[0];
 		}
 		boolean runAway = false;
-		boolean runSideways = false;
 		if (closest != null && closest.type == RobotType.LUMBERJACK
 				&& rc.getLocation().distanceTo(closest.location) <= RobotType.LUMBERJACK.strideRadius
 						+ RobotType.LUMBERJACK.bodyRadius + GameConstants.INTERACTION_DIST_FROM_EDGE) {
 			runAway = true;
-		} else if (closest != null && closest.type == RobotType.LUMBERJACK
-				&& rc.getLocation().distanceTo(closest.location) <= RobotType.LUMBERJACK.strideRadius
-						+ RobotType.LUMBERJACK.bodyRadius + GameConstants.INTERACTION_DIST_FROM_EDGE
-						+ rc.getType().strideRadius) {
-			runSideways = true;
 		}
+		boolean runSideways = false;
 		if (closest != null && (closest.type == RobotType.SOLDIER || closest.type == RobotType.TANK)) {
 			runSideways = true;
 		}
@@ -103,17 +98,9 @@ public abstract strictfp class RangedAttacker extends Bot {
 				break;
 			}
 		}
-		boolean blankShot = false;
-		if (toAttack == null && rc.getRoundNum() - 1 == this.lastAttackRound) {
-			toAttack = this.lastAttackLoc;
-			blankShot = true;
-		}
 
 		if (rc.hasMoved() && toAttack != null) {
 			this.attack(toAttack);
-			if (!blankShot) {
-				this.lastAttackRound = rc.getRoundNum();
-			}
 		}
 
 		if (toAttack == null && bestDir == null) {
@@ -127,9 +114,6 @@ public abstract strictfp class RangedAttacker extends Bot {
 			} else {
 				attack(toAttack);
 				rc.move(bestDir);
-			}
-			if (!blankShot) {
-				this.lastAttackRound = rc.getRoundNum();
 			}
 		}
 		if (toAttack == null && bestDir != null) {
@@ -162,6 +146,7 @@ public abstract strictfp class RangedAttacker extends Bot {
 
 	private void attack(MapLocation attackLoc) throws GameActionException {
 		this.lastAttackLoc = attackLoc;
+		this.lastAttackRound = rc.getRoundNum();
 		boolean five = rc.getLocation().distanceTo(attackLoc) <= 4;
 		boolean three = five || (rc.getLocation().distanceTo(attackLoc) <= 6);
 		Direction toEnemy = rc.getLocation().directionTo(attackLoc);
@@ -174,4 +159,61 @@ public abstract strictfp class RangedAttacker extends Bot {
 		}
 	}
 
+	private RobotInfo findClosestThreat(RobotInfo[] enemies) {
+		RobotInfo closest = null;
+		for (RobotInfo enemy : enemies) {
+			if (!Helper.isHostile(enemy.type)) {
+				continue;
+			}
+			if (closest == null) {
+				closest = enemy;
+				break;
+			}
+		}
+		return closest;
+	}
+
+	private float getScore(MapLocation loc, RobotInfo[] allies, RobotInfo enemy) throws GameActionException {
+		float score = 0;
+		float dist = loc.distanceTo(enemy.location);
+
+		if (this.bulletPathClear(loc, enemy)) {
+			score += 30;
+		} else {
+			score -= 100;
+		}
+
+		if (enemy.type == RobotType.LUMBERJACK
+				&& dist >= enemy.type.strideRadius + enemy.type.bodyRadius + GameConstants.INTERACTION_DIST_FROM_EDGE) {
+			score -= 10;
+		}
+		if (enemy.type == RobotType.ARCHON || enemy.type == RobotType.GARDENER) {
+			score += myType.sensorRadius - loc.distanceTo(enemy.location);
+		}
+		if (enemy.type == RobotType.SOLDIER || enemy.type == RobotType.TANK) {
+			score += loc.distanceTo(enemy.location);
+		}
+		if (enemy.type == RobotType.SCOUT) {
+			score += myType.sensorRadius - loc.distanceTo(enemy.location);
+		}
+		return score;
+	}
+
+	private class AttackInfo {
+		MapLocation attackLoc;
+		Direction moveDir;
+		float score;
+		RobotType type;
+
+		public AttackInfo(MapLocation loc, Direction dir, float score, RobotType type) {
+			this.attackLoc = loc;
+			this.moveDir = dir;
+			this.score = score;
+			this.type = type;
+		}
+
+		public String toString() {
+			return "AttackLoc: " + attackLoc + "\nmoveDir" + moveDir + "\nscore: " + score;
+		}
+	}
 }
