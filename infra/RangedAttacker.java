@@ -23,7 +23,7 @@ public abstract strictfp class RangedAttacker extends Bot {
 		BulletInfo[] bullets = rc.senseNearbyBullets();
 		RobotInfo[] enemies = rc.senseNearbyRobots(myType.sensorRadius, enemyTeam);
 		RobotInfo[] allies = rc.senseNearbyRobots(myType.sensorRadius, myTeam);
-		Direction[] dirs = this.getSafestDirs(bullets, enemies, 4000);
+		Direction[] dirs = this.getSafestDirs(bullets, enemies, 5000);
 
 		int bestScore = 0;
 		Direction bestDir = null;
@@ -90,19 +90,47 @@ public abstract strictfp class RangedAttacker extends Bot {
 			if (rc.getLocation().distanceTo(this.enemyLoc) < myType.sensorRadius) {
 				this.reachedEnemyLoc = true;
 			}
-			if (!reachedEnemyLoc) {
+			MapLocation closestArchonLoc = null;
+			for (int i = 0; i < this.archonLocReached.length; i++) {
+				if (this.archonLocReached[i]) {
+					continue;
+				}
+				if (rc.getLocation().distanceTo(this.enemyArchons[i]) <= 5) {
+					this.archonLocReached[i] = true;
+				} else if (closestArchonLoc == null) {
+					closestArchonLoc = this.enemyArchons[i];
+				} else if (rc.getLocation().distanceTo(enemyArchons[i]) <= rc.getLocation()
+						.distanceTo(closestArchonLoc)) {
+					closestArchonLoc = this.enemyArchons[i];
+				}
+			}
+			if (closestArchonLoc != null) {
+				this.moveTowards(closestArchonLoc);
+			} else if (!reachedEnemyLoc) {
 				this.moveTowards(enemyLoc);
 			} else {
 				this.moveInUnexploredDirection(0);
 			}
+
 		}
 
+		boolean attackingArchon = false;
+		MapLocation archonToAttack = null;
 		MapLocation toAttack = null;
 		for (RobotInfo enemy : enemies) {
-			if (this.bulletPathClear(rc.getLocation(), enemy)) {
+			if (this.bulletPathClear(rc.getLocation(), enemy)
+					|| rc.getLocation().distanceTo(enemy.location) + myType.bodyRadius <= myType.strideRadius) {
 				toAttack = enemy.location;
-				break;
+				if (enemy.type == RobotType.ARCHON) {
+					archonToAttack = enemy.location;
+				} else {
+					break;
+				}
 			}
+		}
+		if (toAttack == null) {
+			attackingArchon = true;
+			toAttack = archonToAttack;
 		}
 		boolean blankShot = false;
 		if (toAttack == null && rc.getRoundNum() - 1 == this.lastAttackRound) {
@@ -111,7 +139,7 @@ public abstract strictfp class RangedAttacker extends Bot {
 		}
 
 		if (rc.hasMoved() && toAttack != null) {
-			this.attack(toAttack);
+			this.attack(toAttack, attackingArchon);
 			if (!blankShot) {
 				this.lastAttackRound = rc.getRoundNum();
 			}
@@ -124,9 +152,9 @@ public abstract strictfp class RangedAttacker extends Bot {
 			MapLocation next = rc.getLocation().add(bestDir, myType.strideRadius);
 			if (next.distanceTo(toAttack) < rc.getLocation().distanceTo(toAttack)) {
 				rc.move(bestDir);
-				attack(toAttack);
+				attack(toAttack, attackingArchon);
 			} else {
-				attack(toAttack);
+				attack(toAttack, attackingArchon);
 				rc.move(bestDir);
 			}
 			if (!blankShot) {
@@ -136,7 +164,8 @@ public abstract strictfp class RangedAttacker extends Bot {
 		if (toAttack == null && bestDir != null) {
 			rc.move(bestDir);
 		}
-
+		this.shake(rc.senseNearbyTrees(
+				myType.bodyRadius + myType.strideRadius + GameConstants.INTERACTION_DIST_FROM_EDGE, Team.NEUTRAL));
 	}
 
 	private MapLocation getAttackLoc() {
@@ -161,10 +190,14 @@ public abstract strictfp class RangedAttacker extends Bot {
 		}
 	}
 
-	private void attack(MapLocation attackLoc) throws GameActionException {
+	private void attack(MapLocation attackLoc, boolean attackingArchon) throws GameActionException {
 		this.lastAttackLoc = attackLoc;
 		boolean five = rc.getLocation().distanceTo(attackLoc) <= 4;
-		boolean three = five || (rc.getLocation().distanceTo(attackLoc) <= 6);
+		boolean three = five || (rc.getLocation().distanceTo(attackLoc) <= myType.sensorRadius + myType.strideRadius);
+		if (attackingArchon) {
+			three = false;
+			five = false;
+		}
 		Direction toEnemy = rc.getLocation().directionTo(attackLoc);
 		if (five && rc.canFirePentadShot()) {
 			rc.firePentadShot(toEnemy);

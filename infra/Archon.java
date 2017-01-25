@@ -30,13 +30,17 @@ public strictfp class Archon extends Bot {
 	// ----------------------------------------------------------------------
 	// BUILD
 	private void build() throws GameActionException {
-		boolean shouldBuildGardner = shouldBuildGardner();
+		boolean builtFirstGardener = rc.readBroadcast(Channels.BUILT_FIRST_GARDENER) != 0;
+		boolean shouldBuildGardner = shouldBuildGardner(builtFirstGardener);
 		if (shouldBuildGardner) {
-			hireGardner();
+			hireGardner(builtFirstGardener);
 		}
 	}
 
-	private boolean shouldBuildGardner() throws GameActionException {
+	private boolean shouldBuildGardner(boolean builtFirstGardener) throws GameActionException {
+		if (!isLeader && rc.getRoundNum() == 2 && !builtFirstGardener) {
+			return true;
+		}
 		if (!isLeader && rc.getRoundNum() <= 40) {
 			return false;
 		}
@@ -54,13 +58,16 @@ public strictfp class Archon extends Bot {
 		return false;
 	}
 
-	private void hireGardner() throws GameActionException {
+	private void hireGardner(boolean firstBuiltGardener) throws GameActionException {
 		if (gardnerCount > Constants.MAX_GARDNER_COUNT) {
 			return;
 		}
 		for (Direction dir : directions) {
 			if (rc.canHireGardener(dir)) {
 				rc.hireGardener(dir);
+				if (!firstBuiltGardener) {
+					rc.broadcast(Channels.BUILT_FIRST_GARDENER, 1);
+				}
 				lastSpawn = rc.getLocation().add(dir, 1);
 			}
 		}

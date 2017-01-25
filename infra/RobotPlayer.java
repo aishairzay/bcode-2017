@@ -22,7 +22,10 @@ public strictfp class RobotPlayer {
 			while (true) {
 				int currentRound = rc.getRoundNum();
 				if (rc.getRoundNum() >= rc.getRoundLimit() - 200) {
-					rc.donate(rc.getTeamBullets());
+					float toDonate = (rc.getTeamBullets() - 15) / rc.getVictoryPointCost();
+					if (toDonate >= 0) {
+						rc.donate(toDonate);
+					}
 				}
 				float teamBullets = rc.getTeamBullets();
 				float victoryPointsAvailable = teamBullets / rc.getVictoryPointCost();
@@ -40,6 +43,7 @@ public strictfp class RobotPlayer {
 				if (endRound > currentRound) {
 					System.out.println("This bot went above its bytecode limits!");
 				}
+				System.out.println("have this many bytecodes left: " + Clock.getBytecodesLeft());
 				Clock.yield();
 			}
 		} catch (Exception e) {

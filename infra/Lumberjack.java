@@ -38,6 +38,10 @@ public strictfp class Lumberjack extends Bot {
 	public void run() throws GameActionException {
 		roundsAlive++;
 
+		if (roundsAlive >= 300) {
+			attacking = true;
+		}
+
 		// Have destination, need to decide if should attack before or after
 		// moving.
 		// Need to decide if should chop or attack
@@ -71,10 +75,10 @@ public strictfp class Lumberjack extends Bot {
 				this.moveInUnexploredDirection(0);
 			}
 		}
+		shake(neutralTrees);
 		if (!rc.hasAttacked()) {
 			chop(neutralTrees);
 		}
-		shake(neutralTrees);
 	}
 
 	private void finalChop(TreeInfo[] trees) throws GameActionException {
@@ -117,14 +121,14 @@ public strictfp class Lumberjack extends Bot {
 		}
 	}
 
-	private MapLocation moveTowardsNeutralTree(TreeInfo[] trees) throws GameActionException {
+	private void moveTowardsNeutralTree(TreeInfo[] trees) throws GameActionException {
 		for (int i = 0; i < trees.length; i++) {
 			TreeInfo tree = trees[i];
 			if (tree.containedRobot != null && tree.containedRobot != RobotType.ARCHON) {
-				return tree.location;
+				this.makeMove(rc.getLocation().directionTo(tree.location));
+				break;
 			}
 		}
-		return null;
 	}
 
 	private void moveTowardsHome(TreeInfo[] trees) throws GameActionException {
@@ -245,11 +249,8 @@ public strictfp class Lumberjack extends Bot {
 		if (enemies.length > 0) {
 			score++;
 		}
-		// System.out.println("ally length: " + allies.length);
-		// System.out.println("enemy length: " + enemies.length);
 		score += enemies.length;
 		score -= allies.length;
-		// System.out.println("Got score: " + score);
 		return score;
 	}
 

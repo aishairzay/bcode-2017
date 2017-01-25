@@ -12,6 +12,8 @@ public strictfp class Channels {
 	public static final Integer EAST_BOUNDARY = 22;
 	public static final Integer SOUTH_BOUNDARY = 23;
 
+	public static final Integer BUILT_FIRST_GARDENER = 10;
+
 	/*
 	 * Channels 1000 - 2000 are purely reserved for Tree location channels. Do
 	 * not reuse these.

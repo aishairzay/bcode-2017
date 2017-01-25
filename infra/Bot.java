@@ -52,9 +52,9 @@ public strictfp abstract class Bot {
 
 	private void findHome() {
 		home = allyArchons[0];
-		int bestScore = -10000000;
+		float bestScore = -10000000;
 		for (MapLocation ally : allyArchons) {
-			int score = 0;
+			float score = 0;
 			for (MapLocation enemy : enemyArchons) {
 				score -= rc.getLocation().distanceTo(enemy);
 			}
@@ -131,9 +131,6 @@ public strictfp abstract class Bot {
 		TreeInfo closest = null;
 		for (TreeInfo tree : trees) {
 			if (tree.team != Team.NEUTRAL || tree.containedBullets <= 1) {
-				continue;
-			}
-			if (myType != RobotType.SCOUT && myType.strideRadius < tree.radius) {
 				continue;
 			}
 			boolean visited = rc.readBroadcast(this.getIdChannel(tree.ID)) > 0;
@@ -243,6 +240,9 @@ public strictfp abstract class Bot {
 				break;
 			}
 			RobotInfo r = rc.senseRobotAtLocation(iter);
+			if (r != null && r.team == myTeam) {
+				return false;
+			}
 			TreeInfo t = rc.senseTreeAtLocation(iter);
 			if (r != null && r.equals(toAttack.location)) {
 				break;
