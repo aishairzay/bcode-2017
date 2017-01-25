@@ -38,12 +38,13 @@ public abstract strictfp class RangedAttacker extends Bot {
 		boolean runSideways = false;
 		if (closest != null && closest.type == RobotType.LUMBERJACK
 				&& rc.getLocation().distanceTo(closest.location) <= RobotType.LUMBERJACK.strideRadius
-						+ RobotType.LUMBERJACK.bodyRadius + GameConstants.INTERACTION_DIST_FROM_EDGE) {
+						+ RobotType.LUMBERJACK.bodyRadius + GameConstants.INTERACTION_DIST_FROM_EDGE
+						+ rc.getType().strideRadius) {
 			runAway = true;
 		} else if (closest != null && closest.type == RobotType.LUMBERJACK
 				&& rc.getLocation().distanceTo(closest.location) <= RobotType.LUMBERJACK.strideRadius
 						+ RobotType.LUMBERJACK.bodyRadius + GameConstants.INTERACTION_DIST_FROM_EDGE
-						+ rc.getType().strideRadius) {
+						+ rc.getType().strideRadius + 1) {
 			runSideways = true;
 		}
 		if (closest != null && (closest.type == RobotType.SOLDIER || closest.type == RobotType.TANK)) {

@@ -351,16 +351,16 @@ public strictfp abstract class Bot {
 	}
 
 	private void bug() throws GameActionException {
+		if (!rc.onTheMap(rc.getLocation(), myType.bodyRadius + myType.strideRadius)) {
+			reset(this.dest);
+			rotationDir = !rotationDir;
+		}
 		bug(0);
 	}
 
 	private void bug(int failures) throws GameActionException {
 		if (failures >= 10) {
 			return;
-		}
-		if (!rc.onTheMap(rc.getLocation(), myType.bodyRadius + myType.strideRadius)) {
-			reset(this.dest);
-			rotationDir = !rotationDir;
 		}
 		float stride = myType.strideRadius;
 		Direction towards = rc.getLocation().directionTo(dest);

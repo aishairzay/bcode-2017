@@ -145,7 +145,9 @@ public strictfp class Gardener extends Bot {
 			this.buildUnit(RobotType.SOLDIER);
 		}
 		int openSquares = countNearbyOpenSquares();
-		if (openSquares > 1) {
+		if (this.rangedCount <= 1) {
+			this.buildUnit(RobotType.SOLDIER);
+		} else if (openSquares > 1) {
 			this.plantTree();
 		} else if (this.rangedCount >= Constants.MAX_RANGED_COUNT) {
 			float extraBullets = (rc.getTeamBullets() - 100);
