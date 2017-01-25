@@ -22,9 +22,9 @@ public strictfp class RobotPlayer {
 			while (true) {
 				int currentRound = rc.getRoundNum();
 				if (rc.getRoundNum() >= rc.getRoundLimit() - 200) {
-					float toDonate = (rc.getTeamBullets() - 15) / rc.getVictoryPointCost();
+					int toDonate = (int) ((rc.getTeamBullets() - 10) / rc.getVictoryPointCost());
 					if (toDonate >= 0) {
-						rc.donate(toDonate);
+						rc.donate(toDonate * rc.getVictoryPointCost());
 					}
 				}
 				float teamBullets = rc.getTeamBullets();
