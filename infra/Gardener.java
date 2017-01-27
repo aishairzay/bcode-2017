@@ -152,7 +152,8 @@ public strictfp class Gardener extends Bot {
 		} else if (this.rangedCount >= Constants.MAX_RANGED_COUNT) {
 			float extraBullets = (rc.getTeamBullets() - 100);
 			if (extraBullets > 0) {
-				rc.donate(extraBullets);
+				float toDonate = ((int) (extraBullets / rc.getVictoryPointCost()) * rc.getVictoryPointCost());
+				rc.donate(toDonate);
 			}
 		} else {
 			if (rangedCount > 2) {
