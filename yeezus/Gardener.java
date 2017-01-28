@@ -38,6 +38,7 @@ public strictfp class Gardener extends Bot {
 		TreeInfo[] neutralTrees = rc.senseNearbyTrees(myType.sensorRadius, Team.NEUTRAL);
 		RobotInfo[] allies = rc.senseNearbyRobots(myType.sensorRadius, myTeam);
 		RobotInfo[] enemies = rc.senseNearbyRobots(myType.sensorRadius, enemyTeam);
+		broadcastEnemy(enemies);
 
 		build(neutralTrees, allies, enemies);
 

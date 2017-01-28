@@ -193,7 +193,7 @@ public strictfp abstract class Bot {
 			}
 			BulletInfo bullet = bullets[i];
 			if (bulletWillCollide(bullet, loc, myType.bodyRadius)
-					&& (loc.distanceTo(bullet.location) <= bullet.speed + myType.bodyRadius)) {
+					&& (loc.distanceTo(bullet.location) <= bullet.speed + (2 * myType.bodyRadius))) {
 				score += bullet.damage;
 			}
 		}
@@ -435,6 +435,13 @@ public strictfp abstract class Bot {
 	}
 
 	private int steps = 0;
+
+	protected void broadcastEnemy(RobotInfo[] enemies) throws GameActionException {
+		if (enemies.length > 0) {
+			RobotInfo closest = enemies[0];
+			Helper.broadcastLocation(Channels.GLOBAL_ENEMY_LOC, rc, closest.location);
+		}
+	}
 
 	protected void moveToEnemyLoc() throws GameActionException {
 		if (steps > 100) {

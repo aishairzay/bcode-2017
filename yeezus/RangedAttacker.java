@@ -9,6 +9,8 @@ public abstract strictfp class RangedAttacker extends Bot {
 	boolean[] archonLocReached;
 	MapLocation lastAttackLoc;
 	int lastAttackRound;
+	MapLocation globalEnemyLoc;
+	private int roundsAlive;
 
 	boolean assignedToArchon;
 
@@ -18,11 +20,22 @@ public abstract strictfp class RangedAttacker extends Bot {
 		reachedEnemyLoc = false;
 		archonLocReached = new boolean[this.allyArchons.length];
 		assignedToArchon = false;
+		roundsAlive = 0;
+	}
+
+	private void readGlobalEnemyLoc() throws GameActionException {
+		if (globalEnemyLoc != null || roundsAlive % 10 != 2) {
+			return;
+		}
+		this.globalEnemyLoc = Helper.getLocation(rc, Channels.GLOBAL_ENEMY_LOC);
+		System.out.println("Got new global enemy loc: " + globalEnemyLoc);
 	}
 
 	@Override
 	public void run() throws GameActionException {
+		roundsAlive++;
 		ping();
+		readGlobalEnemyLoc();
 		BulletInfo[] bullets = rc.senseNearbyBullets();
 		RobotInfo[] enemies = rc.senseNearbyRobots(myType.sensorRadius, enemyTeam);
 		RobotInfo[] allies = rc.senseNearbyRobots(myType.sensorRadius, myTeam);
@@ -85,7 +98,7 @@ public abstract strictfp class RangedAttacker extends Bot {
 			length--;
 		}
 
-		System.out.println("In danger is : " + inDanger);
+		// System.out.println("In danger is : " + inDanger);
 
 		if (length > 0) {
 			for (Direction dir : dirs) {
@@ -136,12 +149,23 @@ public abstract strictfp class RangedAttacker extends Bot {
 					closestArchonLoc = this.enemyArchons[i];
 				}
 			}
+			if (globalEnemyLoc != null && rc.getLocation().distanceTo(globalEnemyLoc) <= myType.sensorRadius - 1) {
+				globalEnemyLoc = null;
+				rc.broadcast(Channels.GLOBAL_ENEMY_LOC, 0);
+				rc.broadcast(Channels.GLOBAL_ENEMY_LOC + 1, 0);
+			}
 			if (closestArchonLoc != null) {
 				this.moveTowards(closestArchonLoc);
+				System.out.println("Moving towards archon.");
+			} else if (this.globalEnemyLoc != null) {
+				this.moveTowards(globalEnemyLoc);
+				System.out.println("Moving towards global enemy loc: " + globalEnemyLoc);
 			} else if (!reachedEnemyLoc) {
 				this.moveTowards(enemyLoc);
+				System.out.println("moving towards enemy loc");
 			} else {
 				this.moveInUnexploredDirection(0);
+				System.out.println("Moving unexplored");
 			}
 
 		}
@@ -201,16 +225,6 @@ public abstract strictfp class RangedAttacker extends Bot {
 
 		this.shake(rc.senseNearbyTrees(
 				myType.bodyRadius + myType.strideRadius + GameConstants.INTERACTION_DIST_FROM_EDGE, Team.NEUTRAL));
-	}
-
-	private MapLocation getAttackLoc() {
-		MapLocation loc = null;
-		if (!reachedEnemyLoc && rc.getLocation().distanceTo(enemyLoc) <= myType.sensorRadius - 1) {
-			this.reachedEnemyLoc = true;
-		} else {
-			return enemyLoc;
-		}
-		return loc;
 	}
 
 	private void ping() throws GameActionException {

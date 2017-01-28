@@ -4,6 +4,7 @@ import battlecode.common.Direction;
 import battlecode.common.GameActionException;
 import battlecode.common.MapLocation;
 import battlecode.common.RobotController;
+import battlecode.common.RobotInfo;
 import battlecode.common.Team;
 import battlecode.common.TreeInfo;
 
@@ -21,6 +22,8 @@ public strictfp class Archon extends Bot {
 
 	public void run() throws GameActionException {
 		TreeInfo[] neutralTrees = rc.senseNearbyTrees(myType.sensorRadius, Team.NEUTRAL);
+		RobotInfo[] enemies = rc.senseNearbyRobots(myType.sensorRadius, enemyTeam);
+		this.broadcastEnemy(enemies);
 		build();
 		micro();
 		this.moveTowardsUnshookTrees();
