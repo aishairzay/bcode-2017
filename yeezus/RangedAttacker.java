@@ -23,12 +23,45 @@ public abstract strictfp class RangedAttacker extends Bot {
 		roundsAlive = 0;
 	}
 
+	private MapLocation getDestination() throws GameActionException {
+		MapLocation dest = null;
+		if (rc.getLocation().distanceTo(this.enemyLoc) <= myType.sensorRadius) {
+			this.reachedEnemyLoc = true;
+		}
+		MapLocation closestArchonLoc = null;
+		for (int i = 0; i < this.archonLocReached.length; i++) {
+			if (this.archonLocReached[i]) {
+				continue;
+			}
+			if (rc.getLocation().distanceTo(this.enemyArchons[i]) <= 5) {
+				this.archonLocReached[i] = true;
+			} else if (closestArchonLoc == null) {
+				closestArchonLoc = this.enemyArchons[i];
+			} else if (rc.getLocation().distanceTo(enemyArchons[i]) <= rc.getLocation().distanceTo(closestArchonLoc)) {
+				closestArchonLoc = this.enemyArchons[i];
+			}
+		}
+		if (globalEnemyLoc != null && rc.getLocation().distanceTo(globalEnemyLoc) <= myType.sensorRadius - 1) {
+			globalEnemyLoc = null;
+			rc.broadcast(Channels.GLOBAL_ENEMY_LOC, 0);
+			rc.broadcast(Channels.GLOBAL_ENEMY_LOC + 1, 0);
+		}
+		if (closestArchonLoc != null) {
+			dest = closestArchonLoc;
+		} else if (this.globalEnemyLoc != null) {
+			dest = globalEnemyLoc;
+		} else if (!reachedEnemyLoc) {
+			dest = enemyLoc;
+			System.out.println("moving towards enemy loc");
+		}
+		return dest;
+	}
+
 	private void readGlobalEnemyLoc() throws GameActionException {
-		if (globalEnemyLoc != null || roundsAlive % 10 != 2) {
+		if (roundsAlive % 10 != 2) {
 			return;
 		}
 		this.globalEnemyLoc = Helper.getLocation(rc, Channels.GLOBAL_ENEMY_LOC);
-		System.out.println("Got new global enemy loc: " + globalEnemyLoc);
 	}
 
 	@Override
@@ -38,8 +71,15 @@ public abstract strictfp class RangedAttacker extends Bot {
 		readGlobalEnemyLoc();
 		BulletInfo[] bullets = rc.senseNearbyBullets();
 		RobotInfo[] enemies = rc.senseNearbyRobots(myType.sensorRadius, enemyTeam);
-		RobotInfo[] allies = rc.senseNearbyRobots(myType.sensorRadius, myTeam);
-		Direction[] dirs = this.getSafestDirs(bullets, enemies, 5000);
+		// RobotInfo[] allies = rc.senseNearbyRobots(myType.sensorRadius,
+		// myTeam);
+		MapLocation[] locs = this.getSafestLocs(bullets, enemies, 10000);
+
+		MapLocation destination = getDestination();
+
+		for (int i = 0; i < locs.length; i++) {
+			System.out.println(locs[i]);
+		}
 
 		for (int i = 0; i < enemies.length; i++) {
 			RobotInfo enemy = enemies[i];
@@ -54,10 +94,9 @@ public abstract strictfp class RangedAttacker extends Bot {
 			}
 		}
 
-		int bestScore = 0;
-		Direction bestDir = null;
-		if (dirs.length > 0) {
-			bestDir = dirs[rand.nextInt(dirs.length)];
+		MapLocation bestLoc = null;
+		if (locs.length > 0) {
+			bestLoc = locs[rand.nextInt(locs.length)];
 		}
 		RobotInfo closest = null;
 		if (enemies.length > 0) {
@@ -75,15 +114,19 @@ public abstract strictfp class RangedAttacker extends Bot {
 		boolean runAway = false;
 		boolean runSideways = false;
 		int length = enemies.length;
+
+		if (closest != null && globalEnemyLoc == null) {
+			this.broadcastEnemy(enemies);
+		}
 		if (closest != null && closest.type == RobotType.LUMBERJACK
 				&& rc.getLocation().distanceTo(closest.location) <= RobotType.LUMBERJACK.strideRadius
 						+ RobotType.LUMBERJACK.bodyRadius + GameConstants.INTERACTION_DIST_FROM_EDGE
-						+ rc.getType().strideRadius) {
+						+ rc.getType().strideRadius + 1) {
 			runAway = true;
 		} else if (closest != null && closest.type == RobotType.LUMBERJACK
 				&& rc.getLocation().distanceTo(closest.location) <= RobotType.LUMBERJACK.strideRadius
 						+ RobotType.LUMBERJACK.bodyRadius + GameConstants.INTERACTION_DIST_FROM_EDGE
-						+ rc.getType().strideRadius + 1) {
+						+ rc.getType().strideRadius + 2) {
 			runSideways = true;
 		}
 		if (closest != null && (closest.type == RobotType.SOLDIER || closest.type == RobotType.TANK)) {
@@ -98,129 +141,84 @@ public abstract strictfp class RangedAttacker extends Bot {
 			length--;
 		}
 
-		// System.out.println("In danger is : " + inDanger);
-
 		if (length > 0) {
-			for (Direction dir : dirs) {
-				MapLocation best = rc.getLocation().add(bestDir, myType.strideRadius);
-				MapLocation next = rc.getLocation().add(dir, myType.strideRadius);
+			for (MapLocation next : locs) {
 				if (runAway) {
-					if (next.distanceTo(closest.location) > best.distanceTo(closest.location)) {
-						bestDir = dir;
+					if (next.distanceTo(closest.location) > bestLoc.distanceTo(closest.location)) {
+						bestLoc = next;
 					}
 				} else if (runSideways) {
 					Direction away = next.directionTo(closest.location);
+					Direction dir = rc.getLocation().directionTo(next);
 					float diff = 180 - Math.abs(away.degreesBetween(dir));
-					Direction bestAway = best.directionTo(closest.location);
+					Direction bestAway = bestLoc.directionTo(closest.location);
 					float bestDiff = 180 - Math.abs(bestAway.degreesBetween(dir));
 					if (diff > bestDiff) {
-						bestDir = dir;
+						bestLoc = next;
 					}
 				} else if (attack) {
-					if (next.distanceTo(closest.location) < best.distanceTo(closest.location)) {
-						bestDir = dir;
+					if (next.distanceTo(closest.location) < bestLoc.distanceTo(closest.location)) {
+						bestLoc = next;
+					}
+				} else {
+					if (destination == null && rand.nextBoolean()) {
+						bestLoc = next;
+					} else if (next.distanceTo(destination) < bestLoc.distanceTo(destination)) {
+						bestLoc = next;
 					}
 				}
 			}
+			System.out.println("Used micro: bestloc is: " + bestLoc);
 		} else if (bullets.length > 0 && inDanger) {
-			MapLocation dest = this.enemyLoc;
-			for (Direction dir : dirs) {
-				MapLocation best = rc.getLocation().add(bestDir, myType.strideRadius);
-				MapLocation next = rc.getLocation().add(dir, myType.strideRadius);
-				if (next.distanceTo(dest) < best.distanceTo(dest)) {
-					bestDir = dir;
+			if (destination == null) {
+				bestLoc = locs[rand.nextInt(locs.length)];
+			} else {
+				for (MapLocation next : locs) {
+					if (next.distanceTo(destination) < bestLoc.distanceTo(destination)) {
+						bestLoc = next;
+					}
 				}
 			}
+			System.out.println("Used dodge: bestloc is: " + bestLoc);
+
 		} else {
-			if (rc.getLocation().distanceTo(this.enemyLoc) <= myType.sensorRadius) {
-				this.reachedEnemyLoc = true;
-			}
-			MapLocation closestArchonLoc = null;
-			for (int i = 0; i < this.archonLocReached.length; i++) {
-				if (this.archonLocReached[i]) {
-					continue;
-				}
-				if (rc.getLocation().distanceTo(this.enemyArchons[i]) <= 5) {
-					this.archonLocReached[i] = true;
-				} else if (closestArchonLoc == null) {
-					closestArchonLoc = this.enemyArchons[i];
-				} else if (rc.getLocation().distanceTo(enemyArchons[i]) <= rc.getLocation()
-						.distanceTo(closestArchonLoc)) {
-					closestArchonLoc = this.enemyArchons[i];
-				}
-			}
-			if (globalEnemyLoc != null && rc.getLocation().distanceTo(globalEnemyLoc) <= myType.sensorRadius - 1) {
-				globalEnemyLoc = null;
-				rc.broadcast(Channels.GLOBAL_ENEMY_LOC, 0);
-				rc.broadcast(Channels.GLOBAL_ENEMY_LOC + 1, 0);
-			}
-			if (closestArchonLoc != null) {
-				this.moveTowards(closestArchonLoc);
-				System.out.println("Moving towards archon.");
-			} else if (this.globalEnemyLoc != null) {
-				this.moveTowards(globalEnemyLoc);
-				System.out.println("Moving towards global enemy loc: " + globalEnemyLoc);
-			} else if (!reachedEnemyLoc) {
-				this.moveTowards(enemyLoc);
-				System.out.println("moving towards enemy loc");
+			if (destination != null) {
+				System.out.println("Moving towards destination now");
+				this.moveTowards(destination);
 			} else {
 				this.moveInUnexploredDirection(0);
-				System.out.println("Moving unexplored");
-			}
-
-		}
-
-		boolean attackingArchon = false;
-		MapLocation archonToAttack = null;
-		MapLocation toAttack = null;
-		for (RobotInfo enemy : enemies) {
-			if (this.bulletPathClear(rc.getLocation(), enemy)
-					|| rc.getLocation().distanceTo(enemy.location) + myType.bodyRadius <= myType.strideRadius) {
-				if (enemy.type.equals(RobotType.ARCHON)) {
-					archonToAttack = enemy.location;
-				} else {
-					toAttack = enemy.location;
-					break;
-				}
 			}
 		}
+		if (destination != null) {
+			rc.setIndicatorLine(rc.getLocation(), destination, 100, 100, 100);
+		}
 
-		if (toAttack == null && archonToAttack != null && this.assignedToArchon) {
-			System.out.println("SETTING ATTACKING ARCHON TO TRUE!");
-			attackingArchon = true;
-			toAttack = archonToAttack;
-		}
-		boolean blankShot = false;
-		if (toAttack == null && rc.getRoundNum() - 1 == this.lastAttackRound) {
-			toAttack = this.lastAttackLoc;
-			blankShot = true;
-		}
+		attackingArchon = false;
+		archonToAttack = null;
+		MapLocation toAttack = this.getToAttack(enemies);
 
 		if (rc.hasMoved() && toAttack != null) {
 			this.attack(toAttack, attackingArchon, blankShot);
-			if (!blankShot) {
-				this.lastAttackRound = rc.getRoundNum();
-			}
 		}
 
-		if (toAttack == null && bestDir == null) {
+		if (toAttack == null && bestLoc == null) {
 			// do nothing
 		}
-		if (toAttack != null && bestDir != null && !rc.hasMoved()) {
-			MapLocation next = rc.getLocation().add(bestDir, myType.strideRadius);
-			if (next.distanceTo(toAttack) < rc.getLocation().distanceTo(toAttack)) {
-				rc.move(bestDir);
+		if (toAttack != null && bestLoc != null && !rc.hasMoved()) {
+			if (bestLoc.distanceTo(toAttack) < rc.getLocation().distanceTo(toAttack)) {
+				rc.move(bestLoc);
 				attack(toAttack, attackingArchon, blankShot);
 			} else {
 				attack(toAttack, attackingArchon, blankShot);
-				rc.move(bestDir);
-			}
-			if (!blankShot) {
-				this.lastAttackRound = rc.getRoundNum();
+				rc.move(bestLoc);
 			}
 		}
-		if (toAttack == null && bestDir != null && !rc.hasMoved()) {
-			rc.move(bestDir);
+		if (toAttack == null && bestLoc != null && !rc.hasMoved()) {
+			rc.move(bestLoc);
+		}
+		if (!rc.hasAttacked()) {
+			MapLocation afterMoveAttack = this.getToAttack(rc.senseNearbyRobots(myType.sensorRadius, enemyTeam));
+			this.attack(afterMoveAttack, attackingArchon, blankShot);
 		}
 
 		this.shake(rc.senseNearbyTrees(
@@ -242,11 +240,16 @@ public abstract strictfp class RangedAttacker extends Bot {
 	private boolean attackRotationDirectionIsRight = false;
 
 	private void attack(MapLocation attackLoc, boolean attackingArchon, boolean blankShot) throws GameActionException {
-		System.out.println("Attacking archons is: " + attackingArchon);
+		if (attackLoc == null) {
+			return;
+		}
+		if (!blankShot) {
+			this.lastAttackRound = rc.getRoundNum();
+		}
 		this.lastAttackLoc = attackLoc;
-		boolean five = rc.getLocation().distanceTo(attackLoc) <= 4;
+		boolean five = rc.getLocation().distanceTo(attackLoc) <= 5;
 		boolean three = true;
-		if (attackingArchon || blankShot) {
+		if (attackingArchon) {
 			three = false;
 			five = false;
 		}
@@ -254,7 +257,9 @@ public abstract strictfp class RangedAttacker extends Bot {
 		float distance = rc.getLocation().distanceTo(attackLoc);
 
 		float r = (float) (RobotType.SOLDIER.bodyRadius * 2);
-		// float rotation = r / distance;
+		if (blankShot) {
+			r = RobotType.SOLDIER.bodyRadius;
+		}
 		int rotation = rand.nextInt((int) ((distance) / (r)));
 		if (attackRotationDirectionIsRight) {
 			toEnemy = toEnemy.rotateLeftDegrees(rotation);
@@ -273,4 +278,36 @@ public abstract strictfp class RangedAttacker extends Bot {
 		}
 	}
 
+	MapLocation archonToAttack = null;
+	boolean attackingArchon = false;
+	boolean blankShot = false;
+
+	private MapLocation getToAttack(RobotInfo[] enemies) throws GameActionException {
+		blankShot = false;
+		MapLocation toAttack = null;
+		for (RobotInfo enemy : enemies) {
+			if (this.bulletPathClear(rc.getLocation(), enemy)
+					|| rc.getLocation().distanceTo(enemy.location) + myType.bodyRadius <= myType.strideRadius) {
+				if (enemy.type.equals(RobotType.ARCHON)) {
+					archonToAttack = enemy.location;
+				} else {
+					toAttack = enemy.location;
+					break;
+				}
+			}
+		}
+
+		if (toAttack == null && archonToAttack != null && this.assignedToArchon) {
+			attackingArchon = true;
+			toAttack = archonToAttack;
+		}
+
+		if (toAttack == null && rc.getRoundNum() - 1 == this.lastAttackRound) {
+			toAttack = this.lastAttackLoc;
+			blankShot = true;
+		}
+
+		return toAttack;
+
+	}
 }

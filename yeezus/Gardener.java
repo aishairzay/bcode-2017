@@ -7,7 +7,6 @@ public strictfp class Gardener extends Bot {
 	private boolean needLumberjack;
 	private boolean needSoldier;
 	private int rangedCount;
-	private boolean stationary;
 	private boolean first;
 
 	Direction[] plantingDirections;
@@ -24,10 +23,8 @@ public strictfp class Gardener extends Bot {
 		}
 		needLumberjack = true;
 		needSoldier = true;
-		stationary = false;
 		if (rc.getRoundNum() <= 10) {
 			first = true;
-			stationary = true;
 		}
 	}
 
@@ -56,9 +53,6 @@ public strictfp class Gardener extends Bot {
 		int neutral = this.countBlockingNeutralTrees();
 		int open = this.countNearbyOpenSquares();
 		int totalSquares = neutral + open;
-		if (totalSquares >= 5) {
-			stationary = true;
-		}
 	}
 
 	private void move() throws GameActionException {

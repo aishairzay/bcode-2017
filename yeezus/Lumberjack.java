@@ -53,13 +53,13 @@ public strictfp class Lumberjack extends Bot {
 
 		finalChop(neutralTrees);
 		int start = Clock.getBytecodeNum();
-		Direction[] dirs = this.getSafestDirs(bullets, enemies, 6000);
+		MapLocation[] locs = this.getSafestLocs(bullets, enemies, 6000);
 		if (!rc.hasMoved()) {
 			start = Clock.getBytecodeNum();
-			micro(dirs, enemies, bullets);
+			micro(locs, enemies, bullets);
 		}
 		if (!rc.hasMoved()) {
-			moveTowardsEnemy(dirs, enemies, bullets);
+			moveTowardsEnemy(locs, enemies, bullets);
 		}
 		if (!rc.hasMoved()) {
 			moveTowardsNeutralTree(neutralTrees);
@@ -93,30 +93,28 @@ public strictfp class Lumberjack extends Bot {
 		}
 	}
 
-	private void moveTowardsEnemy(Direction[] dirs, RobotInfo[] enemies, BulletInfo[] bullets)
+	private void moveTowardsEnemy(MapLocation[] locs, RobotInfo[] enemies, BulletInfo[] bullets)
 			throws GameActionException {
 		if (enemies.length == 0) {
 			return;
 		}
 		MapLocation enemy = enemies[0].location;
-		Direction bestDir;
-		if (dirs.length != 0) {
-			bestDir = dirs[Math.abs(rand.nextInt(dirs.length))];
+		MapLocation bestLoc;
+		if (locs.length != 0) {
+			bestLoc = locs[Math.abs(rand.nextInt(locs.length))];
 		} else {
-			bestDir = directions[rand.nextInt(directions.length)];
+			bestLoc = rc.getLocation().add(directions[rand.nextInt(directions.length)]);
 		}
-		for (Direction dir : dirs) {
-			MapLocation best = rc.getLocation().add(bestDir);
-			MapLocation next = rc.getLocation().add(dir);
-			if (next.distanceTo(enemy) < best.distanceTo(enemy)) {
-				bestDir = dir;
+		for (MapLocation next : locs) {
+			if (next.distanceTo(enemy) < bestLoc.distanceTo(enemy)) {
+				bestLoc = next;
 			}
 		}
-		if (bestDir == null) {
+		if (bestLoc == null) {
 			this.makeMove(rc.getLocation().directionTo(enemy));
 		} else {
-			if (rc.canMove(bestDir)) {
-				rc.move(bestDir);
+			if (rc.canMove(bestLoc)) {
+				rc.move(bestLoc);
 			}
 		}
 	}
@@ -156,16 +154,16 @@ public strictfp class Lumberjack extends Bot {
 		}
 	}
 
-	private boolean micro(Direction[] dirs, RobotInfo[] enemies, BulletInfo[] bullets) throws GameActionException {
+	private boolean micro(MapLocation[] locs, RobotInfo[] enemies, BulletInfo[] bullets) throws GameActionException {
 		if (enemies.length == 0) {
 			return true;
 		}
 		int highestScore = -1000;
 		float bestDist = 100000;
 		Direction next = null;
-		for (Direction dir : dirs) {
-			MapLocation loc = rc.getLocation().add(dir);
+		for (MapLocation loc : locs) {
 			float distToHome = loc.distanceTo(home);
+			Direction dir = rc.getLocation().directionTo(loc);
 			Integer score = getScore(dir);
 			if (score == null || score <= 0) {
 				continue;

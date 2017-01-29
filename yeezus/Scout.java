@@ -32,19 +32,17 @@ public strictfp class Scout extends Bot {
 		}
 
 		if (!rc.hasMoved()) {
-			Direction[] moveDirs = this.getSafestDirs(bullets, enemies, 7000);
-			if (moveDirs.length > 0) {
-				Direction best = moveDirs[rand.nextInt(moveDirs.length)];
+			MapLocation[] moveLocs = this.getSafestLocs(bullets, enemies, 7000);
+			if (moveLocs.length > 0) {
+				MapLocation bestLoc = moveLocs[rand.nextInt(moveLocs.length)];
 				if (destination != null) {
-					for (Direction dir : moveDirs) {
-						MapLocation nextLoc = rc.getLocation().add(dir);
-						MapLocation bestLoc = rc.getLocation().add(best);
+					for (MapLocation nextLoc : moveLocs) {
 						if (nextLoc.distanceTo(destination) <= bestLoc.distanceTo(destination)) {
-							best = dir;
+							bestLoc = nextLoc;
 						}
 					}
 				}
-				rc.move(best);
+				rc.move(bestLoc);
 			} else {
 				if (destination == null) {
 					this.moveInUnexploredDirection(0);

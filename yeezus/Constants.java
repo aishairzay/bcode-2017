@@ -7,5 +7,5 @@ public strictfp class Constants {
 	public static final Integer MAX_GARDNER_COUNT = 15;
 	public static final Integer MAX_RANGED_COUNT = 25;
 
-	public static final Integer MAX_DIRS = 8;
+	public static final Integer MAX_DIRS = 16;
 }
