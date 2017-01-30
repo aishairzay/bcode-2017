@@ -1,10 +1,11 @@
-package weezy;
+package combo;
 
 import battlecode.common.Direction;
 import battlecode.common.GameActionException;
 import battlecode.common.MapLocation;
 import battlecode.common.RobotController;
 import battlecode.common.RobotInfo;
+import battlecode.common.RobotType;
 import battlecode.common.Team;
 import battlecode.common.TreeInfo;
 
@@ -13,6 +14,7 @@ public strictfp class Archon extends Bot {
 	int gardnerCount;
 	boolean isLeader;
 	MapLocation lastSpawn;
+	boolean needScout;
 
 	public Archon(RobotController rc) throws GameActionException {
 		super(rc);
@@ -22,12 +24,46 @@ public strictfp class Archon extends Bot {
 
 	public void run() throws GameActionException {
 		TreeInfo[] neutralTrees = rc.senseNearbyTrees(myType.sensorRadius, Team.NEUTRAL);
-		RobotInfo[] enemies = rc.senseNearbyRobots(myType.sensorRadius, enemyTeam);
-		this.broadcastEnemy(enemies);
+		if (isLeader) {
+			setNeedScout(neutralTrees);
+		}
 		build();
-		micro();
 		this.moveTowardsUnshookTrees();
+		micro();
 		shake(neutralTrees);
+	}
+
+	private void setNeedScout(TreeInfo[] trees) throws GameActionException {
+		if (needScout) {
+			return;
+		}
+		float closestDist = rc.getLocation().distanceTo(enemyArchons[0]);
+		for (MapLocation enemy : enemyArchons) {
+			float dist = rc.getLocation().distanceTo(enemy);
+			if (dist < closestDist) {
+				closestDist = dist;
+			}
+		}
+		if (rc.getRoundNum() <= 1) {
+			if (closestDist >= Constants.MIN_SCOUT_DISTANCE) {
+				rc.broadcastFloat(Channels.SCOUT_NEEDED, closestDist);
+				needScout = true;
+				return;
+			}
+		}
+		int count = 0;
+		for (TreeInfo t : trees) {
+			if (t.containedBullets >= 2) {
+				count++;
+			}
+		}
+		if (count >= 2 && closestDist >= 25) {
+			rc.broadcast(Channels.SCOUT_NEEDED, Constants.MIN_SCOUT_DISTANCE + 1);
+			needScout = true;
+		} else if (count >= 20) {
+			rc.broadcast(Channels.SCOUT_NEEDED, Constants.MIN_SCOUT_DISTANCE + 1);
+			needScout = true;
+		}
 	}
 
 	// ----------------------------------------------------------------------
@@ -41,6 +77,16 @@ public strictfp class Archon extends Bot {
 	}
 
 	private boolean shouldBuildGardner(boolean builtFirstGardener) throws GameActionException {
+		RobotInfo[] closeAllies = rc.senseNearbyRobots(myType.sensorRadius / 2, myTeam);
+		int closeGardeners = 0;
+		for (RobotInfo ally : closeAllies) {
+			if (ally.type == RobotType.GARDENER) {
+				closeGardeners++;
+			}
+		}
+		if (closeGardeners >= 2) {
+			return false;
+		}
 		if (!isLeader && rc.getRoundNum() == 2 && !builtFirstGardener) {
 			return true;
 		}
@@ -49,6 +95,10 @@ public strictfp class Archon extends Bot {
 		}
 		if (isLeader && rc.getRoundNum() <= 1) {
 			return true;
+		}
+		boolean gardenerSetup = rc.readBroadcastBoolean(Channels.GARDENER_IS_SETUP);
+		if (!gardenerSetup) {
+			return false;
 		}
 		if ((rc.getRoundNum() % Constants.GARDENER_PING_RATE) == 1) {
 			gardnerCount = rc.readBroadcast(Channels.GARDENER_PING_CHANNEL);
@@ -86,11 +136,8 @@ public strictfp class Archon extends Bot {
 	}
 
 	private void moveAwayFromLastSpawn() throws GameActionException {
-		if (lastSpawn == null) {
-			return;
-		}
-		if (rc.getLocation().distanceTo(lastSpawn) <= 6) {
-			this.moveInUnexploredDirection(0);
+		if (rc.getLocation().distanceTo(lastSpawn) <= 6 || !rc.onTheMap(rc.getLocation(), 5)) {
+			this.moveInUnexploredDirection(true);
 		}
 	}
 

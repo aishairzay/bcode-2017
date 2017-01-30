@@ -1,4 +1,4 @@
-package weezy;
+package combo;
 
 import battlecode.common.RobotController;
 

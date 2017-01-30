@@ -1,4 +1,4 @@
-package weezy;
+package combo;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -23,22 +23,33 @@ public strictfp abstract class Bot {
 	protected float eastBoundary;
 	protected float southBoundary;
 	protected boolean inDanger;
+	protected float furthestDist;
 
 	public Bot(RobotController rc) {
 		this.rc = rc;
 		rand = new Random(rc.getID());
 		rotationDir = rand.nextBoolean();
+		if (rc.getRoundNum() % 2 == 0) {
+			rotationDir = !rotationDir;
+		}
 		unexploredDir = this.getRandomDirection();
 		myTeam = this.rc.getTeam();
 		enemyTeam = myTeam.opponent();
 		myType = rc.getType();
 		Direction dir = Direction.getWest().rotateRightDegrees(rand.nextInt(4) * 45);
 		int rotation = 45;
+
+		allyArchons = rc.getInitialArchonLocations(myTeam);
+		enemyArchons = rc.getInitialArchonLocations(enemyTeam);
+		furthestDist = 0;
+		for (MapLocation m : enemyArchons) {
+			float dist = rc.getLocation().distanceTo(m);
+			furthestDist = dist > furthestDist ? dist : furthestDist;
+		}
+
 		for (int i = 0; i < 8; i++, rotation += 45) {
 			directions[i] = dir.rotateRightDegrees(rotation);
 		}
-		allyArchons = rc.getInitialArchonLocations(myTeam);
-		enemyArchons = rc.getInitialArchonLocations(enemyTeam);
 		float x = 0;
 		float y = 0;
 		for (MapLocation m : enemyArchons) {
@@ -143,10 +154,65 @@ public strictfp abstract class Bot {
 		if (closest == null) {
 			return;
 		}
-		if (rc.canMove(closest.location)) {
-			rc.move(closest.location);
+
+		this.moveTowards(closest.location);
+
+	}
+
+	protected MapLocation randomDest;
+
+	private int unexploredSteps;
+
+	private void setRandomDest(boolean includeTrees) throws GameActionException {
+		MapLocation dest = rc.getLocation().add(this.getRandomDirection(), 100);
+		float dist = 7;
+		float best = 300;
+		for (Direction dir : directions) {// lowest score is best here
+			float score = 0;
+			MapLocation potential = rc.getLocation().add(dir, (float) ((dist / 2) - 0.2));
+			if (!rc.onTheMap(potential)) {
+				continue;
+			}
+			if ((myType.equals(RobotType.GARDENER) || myType.equals(RobotType.SOLDIER))
+					&& !rc.onTheMap(potential, dist / 2)) {
+				score += 10;
+			} else if (myType.equals(RobotType.ARCHON) && !rc.onTheMap(potential, 2)) {
+				score += 10;
+			}
+			score += rc.senseNearbyRobots(potential, dist / 2, null).length;
+			if (includeTrees) {
+				int l = rc.senseNearbyTrees(potential, dist / 2, null).length;
+				score += l > 0 ? l + 2 : 0;
+			}
+			if (score < best || (score == best && rand.nextBoolean())) {
+				dest = potential;
+				best = score;
+				if (myType.equals(RobotType.SOLDIER)) {
+					dest = rc.getLocation().add(dir, myType.sensorRadius);
+				}
+			}
+		}
+		unexploredSteps = 0;
+		randomDest = dest;
+	}
+
+	protected void moveInUnexploredDirection(boolean includeTrees) throws GameActionException {
+		if (randomDest == null) {
+			setRandomDest(includeTrees);
+		}
+		int stepLimit = 6;
+		if (Helper.isHostile(myType)) {
+			stepLimit = 12;
+		}
+		if (unexploredSteps >= stepLimit) {
+			setRandomDest(includeTrees);
+			moveInUnexploredDirection(includeTrees);
+		} else if (rc.getLocation().distanceTo(randomDest) > 2) {
+			unexploredSteps++;
+			this.moveTowards(randomDest);
 		} else {
-			this.moveTowards(closest.location);
+			setRandomDest(includeTrees);
+			moveInUnexploredDirection(includeTrees);
 		}
 	}
 
@@ -184,50 +250,38 @@ public strictfp abstract class Bot {
 		return perpendicularDist > bodyRadius ? -1 : perpendicularDist;
 	}
 
-	protected float getBulletDangerScore(MapLocation loc, BulletInfo[] bullets, int bytecodeLimit)
+	protected BulletDanger getBulletDangerScore(MapLocation loc, BulletInfo[] bullets, int bytecodeLimit)
 			throws GameActionException {
 		int bytecodeStart = Clock.getBytecodeNum();
-		float score = 0;
-		int count = 0;
+		float primaryScore = 0;
+		float secondaryScore = 0;
 		for (int i = 0; i < bullets.length; i++) {
 			if (Clock.getBytecodeNum() - bytecodeStart >= bytecodeLimit) {
 				break;
 			}
-			count++;
 			BulletInfo bullet = bullets[i];
 			float perpDistance = bulletWillCollide(bullet, loc, myType.bodyRadius);
 			boolean willCollide = perpDistance >= 0;
 			float dist = loc.distanceTo(bullet.location);
 			if (willCollide && (dist <= bullet.speed + (2 * myType.bodyRadius))) {
-				score += bullet.damage - perpDistance;
+				primaryScore += bullet.damage - perpDistance;
 			} else if (willCollide && dist <= (bullet.speed * 2) + (2 * myType.bodyRadius)) {
-				score += (bullet.damage - perpDistance) / 2;
+				secondaryScore += (bullet.damage - perpDistance) / 3; // TODO:
+																		// Figure
+																		// out
+																		// what
+																		// to
+																		// put
+																		// here
 			}
 		}
-		System.out.println("I went through " + count + " bullets this round");
-		return score;
+		return new BulletDanger(primaryScore, secondaryScore);
 	}
 
-	protected float getEnemyLocScore(MapLocation loc, RobotInfo[] enemies) throws GameActionException {
-		if (rc.getType().equals(RobotType.LUMBERJACK)) {
-			return 0;
-		}
-		float score = 0;
-		int count = 0;
-		for (RobotInfo enemy : enemies) {
-			if (count >= 2) {
-				break;
-			}
-			if (!Helper.isHostile(enemy.type)) {
-				continue;
-			}
-			score += EnemyScoreHelper.getDangerScore(rc, loc, enemy);
-			count++;
-		}
-		return score;
-	}
+	protected boolean shootSingles;
 
 	protected boolean bulletPathClear(MapLocation source, RobotInfo toAttack) throws GameActionException {
+		shootSingles = false;
 		MapLocation dest = toAttack.location;
 		Direction towardsEnemy = source.directionTo(dest);
 		int steps = 0;
@@ -244,9 +298,15 @@ public strictfp abstract class Bot {
 			if (r != null && r.team == myTeam) {
 				return false;
 			}
+			if (r != null && r.team == enemyTeam && r.type == RobotType.ARCHON) {
+				shootSingles = true;
+			}
 			TreeInfo t = rc.senseTreeAtLocation(iter);
 			if (r != null && r.equals(toAttack.location)) {
 				break;
+			}
+			if (t != null && t.team == enemyTeam && myType == RobotType.SCOUT) {
+				return false;
 			}
 			if (t != null && t.team != enemyTeam) {
 				break;
@@ -284,23 +344,22 @@ public strictfp abstract class Bot {
 			return new MapLocation[] {};
 		}
 		float stride = myType.strideRadius;
-		System.out.println("My stride radius is: " + stride);
+		// System.out.println("My stride radius is: " + stride);
 		float minScore = -1;
 
-		int count = 0;
 		for (int i = 0; i < 2; i++) {
 			for (Direction dir : directions) {
 				if (Clock.getBytecodeNum() - originalBytecode >= bytecodeLimit) {
 					break;
 				}
-				count++;
 				MapLocation next = rc.getLocation().add(dir, stride);
 				if (!rc.canMove(next)) {
 					continue;
 				}
 				float score = 0;
-				float bulletScore = this.getBulletDangerScore(next, bullets, (bytecodeLimit / 16) - 25);
-				score += bulletScore;
+				BulletDanger bulletDanger = this.getBulletDangerScore(next, bullets, (bytecodeLimit / 16) - 25);
+				float bulletScore = bulletDanger.primaryDanger + bulletDanger.secondaryDanger;
+				score += (float) ((int) bulletScore);
 				if (minScore == -1 || score == minScore) {
 					minScore = score;
 					MapLocation loc = rc.getLocation().add(dir, stride);
@@ -311,14 +370,13 @@ public strictfp abstract class Bot {
 					MapLocation loc = rc.getLocation().add(dir, stride);
 					locs.add(loc);
 				}
-				if (score > 0) {
+				if (bulletDanger.primaryDanger > 0) {
 					inDanger = true;
 				}
 
 			}
 			stride /= 2;
 		}
-		System.out.println("Went through this many directions: " + count);
 
 		return locs.toArray(new MapLocation[] {});
 	}
@@ -330,7 +388,21 @@ public strictfp abstract class Bot {
 			return;
 		}
 		setDestination(dest);
-		bug();
+		MapLocation n = bug();
+		if (n != null) {
+			rc.move(n);
+		} else {
+			this.makeMove(rc.getLocation().directionTo(dest));
+		}
+	}
+
+	protected MapLocation getNextBugLoc(MapLocation dest) throws GameActionException {
+		if (dest == null) {
+			return null;
+		}
+		setDestination(dest);
+		MapLocation n = bug();
+		return n;
 	}
 
 	protected MapLocation getBugDest() {
@@ -343,6 +415,12 @@ public strictfp abstract class Bot {
 	private boolean rotationDir;
 	private int lastRound = 0;
 
+	protected void hardResetBug() {
+		onWall = false;
+		rotationDir = !rotationDir;
+		cur = rc.getLocation().directionTo(dest);
+	}
+
 	private void reset(MapLocation loc) {
 		onWall = false;
 		cur = rc.getLocation().directionTo(loc);
@@ -354,32 +432,32 @@ public strictfp abstract class Bot {
 			reset(loc);
 		}
 		lastRound = rc.getRoundNum();
-		if (dest != null) {
-			// rc.setIndicatorLine(rc.getLocation(), dest, 0, 0, 140);
-		}
 		if (dest == null || !dest.equals(loc)) {
 			reset(loc);
+			if (rand.nextBoolean()) {
+				this.rotationDir = !rotationDir;
+			}
 		}
 	}
 
-	private void bug() throws GameActionException {
+	private MapLocation bug() throws GameActionException {
 		if (!rc.onTheMap(rc.getLocation(), myType.bodyRadius + myType.strideRadius)) {
 			reset(this.dest);
 			rotationDir = !rotationDir;
 		}
-		bug(0);
+		return bug(0);
 	}
 
-	private void bug(int failures) throws GameActionException {
-		System.out.println("Bug called with failures: " + failures);
-		System.out.println("Bug dir: " + cur);
+	private MapLocation bug(int failures) throws GameActionException {
+		// System.out.println("Bug called with failures: " + failures);
+		// System.out.println("Bug dir: " + cur);
 		if (failures >= 20) {
-			return;
+			return null;
 		}
 		float stride = myType.strideRadius;
 		Direction towards = rc.getLocation().directionTo(dest);
 		if (onWall) {
-			if (rc.canMove(rotateRight(cur), stride)) {
+			if (rc.canMove(rotateRight(cur), stride)) { // get off the wall
 				cur = rotateRight(cur);
 				int i = 0;
 				while (rc.canMove(cur, stride)) {
@@ -389,22 +467,20 @@ public strictfp abstract class Bot {
 					}
 					i++;
 					Direction rotate = rotateRight(cur);
-					if (cur.equals(towards, (float) 0.1)) {
+					if (cur.equals(towards, (float) 0.4)) {
 						reset(dest);
-						bug(failures + 1);
-						return;
+						return bug(failures + 1);
 					} else if (rc.canMove(rotate, stride)) {
 						cur = rotate;
 						continue;
 					} else {
-						bug(failures + 1);
-						return;
+						return bug(failures + 1);
 					}
 				}
 			} else if (rc.canMove(cur, stride)) { // move forward
-				rc.move(cur, stride);
+				MapLocation next = rc.getLocation().add(cur, stride);
+				return next;
 			} else {
-				System.out.println("Should be reaching here.");
 				int i = 0;
 				while (!rc.canMove(cur, stride)) {
 					if (i >= 20) {
@@ -415,20 +491,22 @@ public strictfp abstract class Bot {
 					i++;
 				}
 				if (rc.canMove(cur, stride)) {
-					rc.move(cur, stride);
+					MapLocation next = rc.getLocation().add(cur, stride);
+					return next;
 				}
 			}
 		} else {
 			if (rc.canMove(towards, stride)) {
 				reset(dest);
-				rc.move(towards);
+				MapLocation next = rc.getLocation().add(towards, stride);
+				return next;
+				// rc.move(towards);
 			} else {
 				onWall = true;
-				System.out.println("here");
-				bug(failures + 1);
-				return;
+				return bug(failures + 1);
 			}
 		}
+		return null;
 	}
 
 	private Direction rotateRight(Direction dir) {
@@ -449,14 +527,22 @@ public strictfp abstract class Bot {
 
 	private int steps = 0;
 
-	protected void broadcastEnemy(RobotInfo[] enemies) throws GameActionException {
+	protected MapLocation broadcastEnemy(RobotInfo[] enemies) throws GameActionException {
 		if (enemies.length > 0) {
-			RobotInfo closest = enemies[0];
-			if (Helper.isHostile(myType) && closest.type == RobotType.ARCHON) {
-				return;
+			RobotInfo closest = null;
+			for (int i = 0; i < enemies.length; i++) {
+				RobotInfo r = enemies[i];
+				if (r.type == RobotType.GARDENER) {
+					closest = r;
+					break;
+				}
 			}
-			Helper.broadcastLocation(Channels.GLOBAL_ENEMY_LOC, rc, closest.location);
+			if (closest != null) {
+				Helper.broadcastLocation(Channels.GLOBAL_ENEMY_LOC, rc, closest.location);
+				return closest.location;
+			}
 		}
+		return null;
 	}
 
 	protected void moveToEnemyLoc() throws GameActionException {
@@ -482,5 +568,15 @@ public strictfp abstract class Bot {
 			return Direction.NORTH;
 		}
 		return null;
+	}
+
+	private class BulletDanger {
+		float primaryDanger;
+		float secondaryDanger;
+
+		public BulletDanger(float primaryScore, float secondaryScore) {
+			this.primaryDanger = primaryScore;
+			this.secondaryDanger = secondaryScore;
+		}
 	}
 }

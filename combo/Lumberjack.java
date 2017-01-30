@@ -1,7 +1,6 @@
-package weezy;
+package combo;
 
 import battlecode.common.BulletInfo;
-import battlecode.common.Clock;
 import battlecode.common.Direction;
 import battlecode.common.GameActionException;
 import battlecode.common.GameConstants;
@@ -52,10 +51,8 @@ public strictfp class Lumberjack extends Bot {
 		BulletInfo[] bullets = rc.senseNearbyBullets(myType.bulletSightRadius);
 
 		finalChop(neutralTrees);
-		int start = Clock.getBytecodeNum();
 		MapLocation[] locs = this.getSafestLocs(bullets, enemies, 6000);
 		if (!rc.hasMoved()) {
-			start = Clock.getBytecodeNum();
 			micro(locs, enemies, bullets);
 		}
 		if (!rc.hasMoved()) {
@@ -72,7 +69,7 @@ public strictfp class Lumberjack extends Bot {
 		if (attacking && !rc.hasMoved()) {
 			moveToEnemyLoc();
 			if (!rc.hasMoved()) {
-				this.moveInUnexploredDirection(0);
+				this.moveInUnexploredDirection(false);
 			}
 		}
 		shake(neutralTrees);
@@ -250,25 +247,6 @@ public strictfp class Lumberjack extends Bot {
 		score += enemies.length;
 		score -= allies.length;
 		return score;
-	}
-
-	private RobotInfo findClosestEnemy(RobotInfo[] enemies) {
-		RobotInfo closest = null;
-		for (int i = 0; i < enemies.length; i++) {
-			RobotInfo bot = enemies[i];
-			if (closest == null) {
-				closest = bot;
-			}
-			if (rc.getLocation().distanceTo(bot.location) < rc.getLocation().distanceTo(closest.location)) {
-				closest = bot;
-			}
-		}
-		return closest;
-	}
-
-	private Direction moveTowardsClosestEnemy(RobotInfo[] enemies) {
-		RobotInfo closest = findClosestEnemy(enemies);
-		return closest == null ? null : rc.getLocation().directionTo(closest.location);
 	}
 
 }

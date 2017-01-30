@@ -1,4 +1,4 @@
-package weezy;
+package combo;
 
 import battlecode.common.*;
 
@@ -34,6 +34,16 @@ public strictfp class RobotPlayer {
 				if ((currentRound >= rc.getRoundLimit() - 1 || canWin) && teamBullets >= rc.getVictoryPointCost()) {
 					rc.donate(teamBullets);
 				}
+
+				if (rc.getRoundNum() >= 400 && teamBullets > 800) {
+					teamBullets -= 800;
+					int toDonate = (int) (teamBullets / rc.getVictoryPointCost());
+					if (toDonate > 0) {
+						float donation = toDonate * rc.getVictoryPointCost();
+						rc.donate(donation);
+					}
+				}
+
 				try {
 					robot.run();
 				} catch (Exception e) {

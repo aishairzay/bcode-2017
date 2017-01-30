@@ -19,6 +19,7 @@ public strictfp class Archon extends Bot {
 		super(rc);
 		gardnerCount = 1;
 		isLeader = home.equals(rc.getLocation());
+		
 	}
 
 	public void run() throws GameActionException {
@@ -27,8 +28,8 @@ public strictfp class Archon extends Bot {
 		// enemyTeam);
 		// this.broadcastEnemy(enemies);
 		build();
+		this.moveTowardsUnshookTrees();
 		micro();
-		// this.moveTowardsUnshookTrees();
 		shake(neutralTrees);
 	}
 
@@ -102,12 +103,7 @@ public strictfp class Archon extends Bot {
 	}
 
 	private void moveAwayFromLastSpawn() throws GameActionException {
-		if (lastSpawn == null) {
-			return;
-		}
-		if (rc.getLocation().distanceTo(lastSpawn) <= 5) {
-			this.moveInUnexploredDirection(true);
-		}
+		this.moveInUnexploredDirection(true);
 	}
 
 }

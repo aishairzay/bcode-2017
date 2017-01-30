@@ -1,4 +1,4 @@
-package weezy;
+package combo;
 
 public strictfp class Channels {
 	public static final Integer GARDENER_PING_CHANNEL = 1;
@@ -6,6 +6,7 @@ public strictfp class Channels {
 	public static final Integer RANGED_PING_CHANNEL = 3;
 	public static final Integer ENEMY_ATTACK_SCORE = 11;
 	public static final Integer ENEMY_ATTACK_LOCATION = 12;
+	public static final Integer SCOUT_NEEDED = 14;
 
 	public static final Integer WEST_BOUNDARY = 20;
 	public static final Integer NORTH_BOUNDARY = 21;
