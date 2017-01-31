@@ -180,7 +180,7 @@ public strictfp class Gardener extends Bot {
 				rc.donate(toDonate);
 			}
 		} else {
-			if (rc.getTeamBullets() <= 135) {
+			if (rc.getTeamBullets() <= 105) {
 				return;
 			}
 			this.buildUnit(RobotType.SOLDIER);
