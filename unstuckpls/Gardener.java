@@ -66,8 +66,7 @@ public strictfp class Gardener extends Bot {
 
 	private void build(TreeInfo[] neutralTrees, RobotInfo[] allies, RobotInfo[] enemies, BulletInfo[] bullets)
 			throws GameActionException {
-		int allyCount = 0, enemyCount = 0, localRangedCount = 0, enemyScoutCount = 0, healthyLocalRangedCount = 0,
-				lumberjackCount = 0;
+		int allyCount = 0, enemyCount = 0, enemyScoutCount = 0, healthyLocalRangedCount = 0, lumberjackCount = 0;
 		float enemyDistForScoutSpawn = rc.readBroadcastFloat(Channels.SCOUT_NEEDED);
 		for (RobotInfo enemy : enemies) {
 			if (Helper.isHostile(enemy.type) && enemy.type != RobotType.GARDENER) {
@@ -87,7 +86,6 @@ public strictfp class Gardener extends Bot {
 					if (ally.health >= RobotType.SOLDIER.maxHealth) {
 						healthyLocalRangedCount++;
 					}
-					localRangedCount++;
 				}
 			}
 		}
