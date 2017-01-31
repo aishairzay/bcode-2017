@@ -106,7 +106,7 @@ public strictfp class Archon extends Bot {
 		} else if (rc.getRoundNum() % Constants.GARDENER_PING_RATE == 2) {
 			rc.broadcast(Channels.GARDENER_PING_CHANNEL, -1);
 		}
-		if (rc.getRoundNum() >= 23 && rc.getTeamBullets() >= 110 && gardenerCount <= Constants.MAX_GARDNER_COUNT) {
+		if (rc.getRoundNum() >= 28 && rc.getTeamBullets() >= 110 && gardenerCount <= Constants.MAX_GARDNER_COUNT) {
 			return true;
 		}
 		return false;

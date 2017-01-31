@@ -95,7 +95,6 @@ public strictfp class Gardener extends Bot {
 			RobotType r = tree.containedRobot;
 			if (r != null && r != RobotType.SCOUT && r != RobotType.ARCHON) {
 				robotContainedTrees++;
-				break;
 			}
 		}
 

@@ -26,9 +26,6 @@ public strictfp class Gardener extends Bot {
 		if (rc.getRoundNum() <= 10) {
 			first = true;
 		}
-		if (first) {
-			soldiersNeeded = 1;
-		}
 		hasBuiltTree = false;
 	}
 
@@ -91,11 +88,14 @@ public strictfp class Gardener extends Bot {
 		int blockingNeutralTrees = countBlockingNeutralTrees();
 		int openSquares = countNearbyOpenSquares();
 		int robotContainedTrees = 0;
+		boolean treeHasRanged = false;
 		for (TreeInfo tree : neutralTrees) {
 			RobotType r = tree.containedRobot;
-			if (r != null && r != RobotType.SCOUT && r != RobotType.ARCHON) {
+			if (r != null) {
 				robotContainedTrees++;
-				break;
+				if (r == RobotType.TANK || r == RobotType.SOLDIER) {
+					treeHasRanged = true;
+				}
 			}
 		}
 
@@ -110,7 +110,8 @@ public strictfp class Gardener extends Bot {
 			return;
 		}
 
-		if (first && robotContainedTrees > 1 && rc.getRoundNum() - this.lumberjackCooldown >= 50) {
+		if (first && rc.getRoundNum() <= 20 && robotContainedTrees > 1
+				&& rc.getRoundNum() - this.lumberjackCooldown >= 50) {
 			if (this.buildUnit(RobotType.LUMBERJACK)) {
 				this.lumberjackCooldown = rc.getRoundNum();
 			}
@@ -149,7 +150,7 @@ public strictfp class Gardener extends Bot {
 		}
 
 		boolean needLumberjack = false;
-		if ((blockingNeutralTrees >= 1 && openSquares <= 1)) {
+		if ((blockingNeutralTrees >= 1 && openSquares <= 1) || treeHasRanged || robotContainedTrees > 2) {
 			needLumberjack = true;
 		}
 		System.out.println("Need lumberjack: " + needLumberjack);
@@ -225,7 +226,7 @@ public strictfp class Gardener extends Bot {
 	private void plantTree(RobotInfo[] allies) throws GameActionException {
 		if (failures <= 15) {
 			for (RobotInfo a : allies) {
-				if (rc.getLocation().distanceTo(a.location) <= 5 && a.type == RobotType.ARCHON) {
+				if (a.type == RobotType.ARCHON && rc.getLocation().distanceTo(a.location) <= 5) {
 					failures++;
 					return;
 				}

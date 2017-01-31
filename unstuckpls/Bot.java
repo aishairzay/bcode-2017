@@ -174,6 +174,11 @@ public strictfp abstract class Bot {
 			if (!rc.onTheMap(potential)) {
 				continue;
 			}
+			if (myType.equals(RobotType.GARDENER)) {
+				RobotInfo[] enemies = rc.senseNearbyRobots(potential, dist / 2, enemyTeam);
+				score += enemies.length * 5;
+			}
+
 			if ((myType.equals(RobotType.GARDENER) || myType.equals(RobotType.SOLDIER))
 					&& !rc.onTheMap(potential, dist / 2)) {
 				score += 10;

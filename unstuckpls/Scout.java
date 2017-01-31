@@ -30,7 +30,7 @@ public strictfp class Scout extends Bot {
 
 		RobotInfo closestHostile = null;
 		for (RobotInfo enemy : enemies) {
-			if (Helper.isHostile(enemy.type)) {
+			if (Helper.isHostile(enemy.type) && enemy.type != RobotType.SCOUT) {
 				if (closestHostile == null) {
 					closestHostile = enemy;
 					break;
@@ -44,14 +44,9 @@ public strictfp class Scout extends Bot {
 			dest = n;
 		}
 		if (dest != null) {
-			if (rc.canMove(dest)) {
-				rc.move(dest);
-			} else {
-				MapLocation toMove = this.makeSafeMove(dest, locs, closestHostile);
-				System.out.println("To move is: " + toMove);
-				if (toMove != null) {
-					rc.move(toMove);
-				}
+			MapLocation toMove = this.makeSafeMove(dest, locs, closestHostile);
+			if (toMove != null) {
+				rc.move(toMove);
 			}
 		}
 		if (inDanger && !rc.hasMoved()) {
@@ -63,6 +58,7 @@ public strictfp class Scout extends Bot {
 			this.moveInUnexploredDirection(0);
 		}
 		attackEnemies(enemies, RobotType.GARDENER);
+		attackEnemies(enemies, RobotType.SCOUT);
 		shake(neutralTrees);
 	}
 
@@ -80,11 +76,13 @@ public strictfp class Scout extends Bot {
 
 	private MapLocation makeSafeMove(MapLocation destination, MapLocation[] options, RobotInfo closestHostile)
 			throws GameActionException {
-		System.out.println("Options length:" + options.length);
 		if (options.length == 0) {
 			return null;
 		}
 		float bestScore = -1;
+		if (rc.canMove(destination) && getDangerScore(destination, closestHostile) <= 10) {
+			return destination;
+		}
 		MapLocation best = null;
 		for (MapLocation next : options) {
 			if (rc.canMove(next)) {
@@ -143,6 +141,9 @@ public strictfp class Scout extends Bot {
 	private void attackEnemies(RobotInfo[] enemies, RobotType type) throws GameActionException {
 		RobotInfo closestEnemy = null;
 		if (!rc.canFireSingleShot()) {
+			return;
+		}
+		if (Clock.getBytecodesLeft() <= 2000) {
 			return;
 		}
 		for (RobotInfo enemy : enemies) {

@@ -287,7 +287,7 @@ public abstract strictfp class RangedAttacker extends Bot {
 		archonToAttack = null;
 		MapLocation toAttack = this.getToAttack(enemies);
 		float enemyHealth = 0;
-		if (closest != null && closest.type == RobotType.SOLDIER || closest.type == RobotType.TANK) {
+		if (closest != null && (closest.type == RobotType.SOLDIER || closest.type == RobotType.TANK)) {
 			enemyHealth = closest.health;
 		}
 
@@ -352,7 +352,7 @@ public abstract strictfp class RangedAttacker extends Bot {
 		}
 		this.lastAttackLoc = attackLoc;
 		boolean five = rc.getLocation().distanceTo(attackLoc) <= 5.0;
-		boolean three = rc.getLocation().distanceTo(attackLoc) <= 5.5 || enemyHealth > rc.getHealth();
+		boolean three = rc.getLocation().distanceTo(attackLoc) <= 6;
 		if (attackingArchon && rc.getRoundNum() <= 300) {
 			return;
 		}
