@@ -119,6 +119,13 @@ public strictfp class Gardener extends Bot {
 			}
 			return;
 		}
+		if (first && rc.getRoundNum() <= 20 && openSquares <= 1 && blockingNeutralTrees >= 1
+				&& rc.getRoundNum() - this.lumberjackCooldown >= 50) {
+			if (this.buildUnit(RobotType.LUMBERJACK)) {
+				this.lumberjackCooldown = rc.getRoundNum();
+			}
+			return;
+		}
 
 		if (soldiersNeeded > 0 && first) {
 			if (this.buildUnit(RobotType.SOLDIER)) {

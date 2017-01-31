@@ -32,9 +32,7 @@ public strictfp abstract class Bot {
 
 		rand = new Random(rc.getID());
 		rotationDir = rand.nextBoolean();
-		if (rc.getRoundNum() % 2 == 0) {
-			rotationDir = !rotationDir;
-		}
+		System.out.println("Rotation dir is: " + rotationDir);
 		unexploredDir = this.getRandomDirection();
 		myTeam = this.rc.getTeam();
 		enemyTeam = myTeam.opponent();
@@ -395,75 +393,11 @@ public strictfp abstract class Bot {
 			return;
 		}
 		setDestination(dest);
-		bugWithoutReturn();
-		if (!rc.hasMoved()) {
-			this.makeMove(rc.getLocation().directionTo(dest));
-		}
-	}
-
-	private void bugWithoutReturn() throws GameActionException {
-		if (!rc.onTheMap(rc.getLocation(), myType.bodyRadius + myType.strideRadius)) {
-			reset(this.dest);
-			rotationDir = !rotationDir;
-		}
-		bugWithoutReturn(0);
-	}
-
-	private void bugWithoutReturn(int failures) throws GameActionException {
-		if (failures >= 20) {
-			return;
-		}
-		if (rc.hasMoved()) {
-			return;
-		}
-		Direction towards = rc.getLocation().directionTo(dest);
-		if (onWall) {
-			if (rc.canMove(rotateRight(cur))) { // get off the wall
-				cur = rotateRight(cur);
-				int i = 0;
-				while (rc.canMove(cur)) {
-					if (i >= 20) {
-						reset(dest);
-						rotationDir = !rotationDir;
-						break;
-					}
-					i++;
-					Direction rotate = rotateRight(cur);
-					if (cur.equals(towards, (float) 0.1964)) {
-						reset(dest);
-						bugWithoutReturn(failures + 1);
-					} else if (rc.canMove(rotate)) {
-						cur = rotate;
-						continue;
-					} else {
-						bugWithoutReturn(failures + 1);
-					}
-				}
-			} else if (rc.canMove(cur)) { // move forward
-				rc.move(cur);
-			} else {
-				int i = 0;
-				while (!rc.canMove(cur)) {
-					if (i >= 20) {
-						reset(dest);
-						rotationDir = !rotationDir;
-						break;
-					}
-					cur = rotateLeft(cur);
-					i++;
-				}
-				if (rc.canMove(cur)) {
-					rc.move(cur);
-				}
-			}
+		MapLocation n = bug();
+		if (n != null && rc.canMove(n)) {
+			rc.move(n);
 		} else {
-			if (rc.canMove(towards)) {
-				reset(dest);
-				rc.move(towards);
-			} else {
-				onWall = true;
-				bugWithoutReturn(failures + 1);
-			}
+			this.makeMove(rc.getLocation().directionTo(dest));
 		}
 	}
 

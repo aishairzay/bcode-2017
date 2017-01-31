@@ -378,9 +378,14 @@ public abstract strictfp class RangedAttacker extends Bot {
 		Direction toEnemy = rc.getLocation().directionTo(attackLoc);
 		float distance = rc.getLocation().distanceTo(attackLoc);
 
-		float r = (float) (RobotType.SOLDIER.bodyRadius * 1.75);
+		if (attackingArchon || shootSingles) {
+			three = false;
+			five = false;
+		}
+
+		float r = (RobotType.SOLDIER.bodyRadius * (float) 1.75);
 		if (blankShot && hostileEnemyCount == 0) {
-			r = RobotType.SOLDIER.bodyRadius;
+			r = (RobotType.SOLDIER.bodyRadius * (float) 1.25);
 		}
 		if (rand.nextBoolean()) {
 			float rotation = distance / r;
