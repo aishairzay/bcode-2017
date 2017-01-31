@@ -60,7 +60,6 @@ public strictfp class Scout extends Bot {
 		}
 
 		if (!rc.hasMoved()) {
-			System.out.println("Moving randomly");
 			this.moveInUnexploredDirection(0);
 		}
 		attackEnemies(enemies, RobotType.GARDENER);
@@ -73,7 +72,7 @@ public strictfp class Scout extends Bot {
 		}
 		float score = 0;
 		float dist = loc.distanceTo(closestHostile.location);
-		if (dist <= 9) {
+		if (dist <= 10) {
 			score = 100 - dist;
 		}
 		return score;
@@ -90,7 +89,7 @@ public strictfp class Scout extends Bot {
 		for (MapLocation next : options) {
 			if (rc.canMove(next)) {
 				System.out.println("Next is: " + next);
-				if (best == null) {
+				if (best == null || bestScore == -1) {
 					bestScore = getDangerScore(next, closestHostile);
 					best = next;
 					continue;
@@ -107,6 +106,7 @@ public strictfp class Scout extends Bot {
 				}
 			}
 		}
+		System.out.println("Best score at the end: " + bestScore);
 		return best;
 	}
 

@@ -89,10 +89,8 @@ public strictfp abstract class Bot {
 	protected void shake(TreeInfo[] trees) throws GameActionException {
 		if (rc.canShake()) {
 			for (TreeInfo tree : trees) {
-				if (rc.canShake(tree.ID)) {
+				if (tree.containedBullets > 0 && rc.canShake(tree.ID)) {
 					rc.shake(tree.ID);
-					int channel = Channels.getIdChannel(tree.ID);
-					rc.broadcast(channel, 1);
 					break;
 				}
 			}
@@ -184,14 +182,14 @@ public strictfp abstract class Bot {
 					score += 10;
 				}
 			score += rc.senseNearbyRobots(potential, dist / 2, null).length;
+			if (myType.equals(RobotType.SOLDIER) || myType.equals(RobotType.TANK)) {
+				int enemies = rc.senseNearbyTrees(potential, dist / 2, enemyTeam).length;
+				score -= enemies;
+			}
 			if (includeTrees) {
 				int n = rc.senseNearbyTrees(potential, dist / 2, Team.NEUTRAL).length;
 				int m = rc.senseNearbyTrees(potential, dist / 2, myTeam).length;
-				int e = rc.senseNearbyTrees(potential, dist / 2, Team.NEUTRAL).length;
 				score += n + m > 0 ? n + m + 2 : 0;
-				if (e >= 0) {
-					score -= 10;
-				}
 
 			}
 			if (score < best || (score == best && rand.nextBoolean())) {
@@ -444,11 +442,20 @@ public strictfp abstract class Bot {
 	private void reset(MapLocation loc) {
 		onWall = false;
 		cur = rc.getLocation().directionTo(loc);
+		Direction best = Direction.NORTH;
+		for (Direction dir : directions) {
+			float bestDiff = Math.abs(cur.degreesBetween(best));
+			float diff = Math.abs(cur.degreesBetween(dir));
+			if (diff < bestDiff) {
+				best = dir;
+			}
+		}
+		cur = best;
 		dest = loc;
 	}
 
 	private void setDestination(MapLocation loc) {
-		if (rc.getRoundNum() - lastRound >= 5) {
+		if (rc.getRoundNum() - lastRound >= 8) {
 			reset(loc);
 		}
 		lastRound = rc.getRoundNum();
@@ -531,17 +538,17 @@ public strictfp abstract class Bot {
 
 	private Direction rotateRight(Direction dir) {
 		if (rotationDir) {
-			return dir.rotateRightDegrees((float) 22.5);
+			return dir.rotateRightDegrees((float) 5);
 		} else {
-			return dir.rotateLeftDegrees((float) 22.5);
+			return dir.rotateLeftDegrees((float) 5);
 		}
 	}
 
 	private Direction rotateLeft(Direction dir) {
 		if (rotationDir) {
-			return dir.rotateLeftDegrees((float) 22.5);
+			return dir.rotateLeftDegrees((float) 5);
 		} else {
-			return dir.rotateRightDegrees((float) 22.5);
+			return dir.rotateRightDegrees((float) 5);
 		}
 	}
 

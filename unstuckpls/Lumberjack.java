@@ -14,52 +14,72 @@ public strictfp class Lumberjack extends Bot {
 
 	private boolean attacking;
 	private int roundsAlive;
-	private int steps;
 
 	public Lumberjack(RobotController rc) {
 		super(rc);
-		home = rc.getLocation();
+		RobotInfo[] allies = rc.senseNearbyRobots(3, myTeam);
+		for (RobotInfo ally : allies) {
+			if (ally.type == RobotType.GARDENER) {
+				home = ally.location;
+				break;
+			}
+		}
+		if (home == null) {
+			home = rc.getLocation();
+		}
 		attacking = false;
 		roundsAlive = 0;
-		steps = 0;
+
 	}
 
 	@Override
 	public void run() throws GameActionException {
 		roundsAlive++;
-		if (!attacking && roundsAlive > 175 && rc.getRoundNum() % 100 == 0) {
+
+		if (roundsAlive >= 300) {
 			attacking = true;
 		}
-		TreeInfo[] trees = rc.senseNearbyTrees(myType.sensorRadius, Team.NEUTRAL);
+
+		// Have destination, need to decide if should attack before or after
+		// moving.
+		// Need to decide if should chop or attack
+		// if home.equals destination, should chop trees if run into them.
+
 		RobotInfo[] enemies = rc.senseNearbyRobots(myType.sensorRadius, enemyTeam);
-		boolean shouldMove = false;
-		finalChop(trees);
+		TreeInfo[] neutralTrees = rc.senseNearbyTrees(myType.sensorRadius, Team.NEUTRAL);
+
+		finalChop(neutralTrees);
 		if (!rc.hasMoved()) {
-			shouldMove = micro(enemies);
+			moveTowardsNeutralTree(neutralTrees);
 		}
-		if (shouldMove && !rc.hasMoved()) {
+		if (!rc.hasMoved()) {
+			micro(enemies);
+		}
+		if (!rc.hasMoved()) {
 			moveTowardsEnemy(enemies);
 		}
-		if (shouldMove && !rc.hasMoved()) {
-			moveTowardsNeutralTree(trees);
+		if (!attacking && !rc.hasMoved()) {
+			TreeInfo[] nearbyNeutral = rc.senseNearbyTrees(
+					(float) (myType.bodyRadius + GameConstants.INTERACTION_DIST_FROM_EDGE - 0.1), Team.NEUTRAL);
+			moveTowardsHome(nearbyNeutral);
 		}
-		if (!attacking && shouldMove && !rc.hasMoved()) {
-			moveTowardsHome();
-		}
-		if (attacking && shouldMove && !rc.hasMoved()) {
+		if (attacking && !rc.hasMoved()) {
 			moveToEnemyLoc();
 			if (!rc.hasMoved()) {
 				this.moveInUnexploredDirection(0);
 			}
 		}
+		shake(neutralTrees);
 		if (!rc.hasAttacked()) {
-			chop(trees);
+			chop(neutralTrees);
 		}
-		shake(rc.senseNearbyTrees(3, Team.NEUTRAL));
 	}
 
 	private void finalChop(TreeInfo[] trees) throws GameActionException {
 		for (TreeInfo tree : trees) {
+			if (!rc.canChop(tree.ID)) {
+				return;
+			}
 			if (rc.canChop(tree.ID) && tree.health <= GameConstants.LUMBERJACK_CHOP_DAMAGE
 					&& tree.containedRobot != null) {
 				rc.chop(tree.ID);
@@ -67,59 +87,49 @@ public strictfp class Lumberjack extends Bot {
 		}
 	}
 
-	protected void moveToEnemyLoc() throws GameActionException {
-		if (steps > 75) {
-			return;
-		}
-		this.makeMove(rc.getLocation().directionTo(this.enemyLoc));
-		steps++;
-	}
-
 	private void moveTowardsEnemy(RobotInfo[] enemies) throws GameActionException {
 		if (enemies.length == 0) {
 			return;
 		}
-		RobotInfo enemy = enemies[0];
-		this.makeMove(rc.getLocation().directionTo(enemy.location));
+		Direction[] dirs = directions;
+		MapLocation enemy = enemies[0].location;
+		Direction bestDir;
+		if (dirs.length != 0) {
+			bestDir = dirs[Math.abs(rand.nextInt(dirs.length))];
+		} else {
+			bestDir = directions[rand.nextInt(directions.length)];
+		}
+		for (Direction dir : dirs) {
+			MapLocation best = rc.getLocation().add(bestDir);
+			MapLocation next = rc.getLocation().add(dir);
+			if (next.distanceTo(enemy) < best.distanceTo(enemy)) {
+				bestDir = dir;
+			}
+		}
+		if (bestDir == null) {
+			this.makeMove(rc.getLocation().directionTo(enemy));
+		} else {
+			if (rc.canMove(bestDir)) {
+				rc.move(bestDir);
+			}
+		}
 	}
 
 	private void moveTowardsNeutralTree(TreeInfo[] trees) throws GameActionException {
-		if (trees.length == 0) {
-			return;
-		}
-		TreeInfo first = trees[0];
-		if (home.distanceTo(first.location) > RobotType.LUMBERJACK.sensorRadius) {
-			for (TreeInfo tree : trees) {
-				if (tree.containedRobot != null) {
-					this.makeMove(rc.getLocation().directionTo(first.location));
-				}
-			}
-			return;
-		}
-		this.makeMove(rc.getLocation().directionTo(first.location));
-	}
-
-	private void moveTowardsHome() throws GameActionException {
-		float dist = rc.getLocation().distanceTo(home);
-		RobotInfo[] allies = rc.senseNearbyRobots(myType.sensorRadius, myTeam);
-		MapLocation closest = null;
-		for (RobotInfo ally : allies) {
-			if (ally.type != RobotType.GARDENER) {
-				continue;
-			}
-			if (closest == null) {
-				closest = ally.location;
+		for (int i = 0; i < trees.length; i++) {
+			TreeInfo tree = trees[i];
+			if (tree.containedRobot != null && tree.containedRobot != RobotType.ARCHON) {
+				this.makeMove(rc.getLocation().directionTo(tree.location));
 				break;
 			}
 		}
-		if (closest != null && rc.getLocation().distanceTo(closest) < 5) {
-			moveInUnexploredDirection(0);
-		}
-		if (dist <= 5) {
-			moveInUnexploredDirection(0);
-		}
-		if (!rc.canSenseLocation(home) || dist > 5) {
-			this.makeMove(rc.getLocation().directionTo(home));
+	}
+
+	private void moveTowardsHome(TreeInfo[] trees) throws GameActionException {
+		if (trees.length == 0) {
+			this.moveTowards(home);
+		} else {
+			roundsAlive = 1;
 		}
 	}
 
@@ -144,18 +154,13 @@ public strictfp class Lumberjack extends Bot {
 		if (enemies.length == 0) {
 			return true;
 		}
-		Direction north = Direction.getNorth();
-		int turns = 16;
 		int highestScore = -1000;
 		float bestDist = 100000;
 		Direction next = null;
-		for (int i = 0; i < turns; i++) {
-			float rotation = i * (360 / turns);
-			Direction dir = north.rotateRightDegrees(rotation);
+		for (Direction dir : directions) {
 			MapLocation loc = rc.getLocation().add(dir);
 			float distToHome = loc.distanceTo(home);
 			Integer score = getScore(dir);
-			// System.out.println("Got score : " + i + ", " + score);
 			if (score == null || score <= 0) {
 				continue;
 			}
@@ -238,11 +243,8 @@ public strictfp class Lumberjack extends Bot {
 		if (enemies.length > 0) {
 			score++;
 		}
-		// System.out.println("ally length: " + allies.length);
-		// System.out.println("enemy length: " + enemies.length);
 		score += enemies.length;
 		score -= allies.length;
-		// System.out.println("Got score: " + score);
 		return score;
 	}
 

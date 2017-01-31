@@ -110,6 +110,13 @@ public strictfp class Gardener extends Bot {
 			return;
 		}
 
+		if (first && robotContainedTrees > 1 && rc.getRoundNum() - this.lumberjackCooldown >= 50) {
+			if (this.buildUnit(RobotType.LUMBERJACK)) {
+				this.lumberjackCooldown = rc.getRoundNum();
+			}
+			return;
+		}
+
 		if (soldiersNeeded > 0 && first) {
 			if (this.buildUnit(RobotType.SOLDIER)) {
 				soldiersNeeded--;
@@ -142,7 +149,7 @@ public strictfp class Gardener extends Bot {
 		}
 
 		boolean needLumberjack = false;
-		if ((blockingNeutralTrees >= 1 && openSquares <= 1) || robotContainedTrees > 1) {
+		if ((blockingNeutralTrees >= 1 && openSquares <= 1)) {
 			needLumberjack = true;
 		}
 		System.out.println("Need lumberjack: " + needLumberjack);
@@ -157,7 +164,7 @@ public strictfp class Gardener extends Bot {
 		if (this.rangedCount <= 1) {
 			this.buildUnit(RobotType.SOLDIER);
 		} else if (openSquares > 1) {
-			this.plantTree();
+			this.plantTree(allies);
 		} else if (this.rangedCount >= Constants.MAX_RANGED_COUNT) {
 			float extraBullets = (rc.getTeamBullets() - 200);
 			if (extraBullets > 0) {
@@ -213,7 +220,17 @@ public strictfp class Gardener extends Bot {
 		return false;
 	}
 
-	private void plantTree() throws GameActionException {
+	private int failures = 0;
+
+	private void plantTree(RobotInfo[] allies) throws GameActionException {
+		if (failures <= 15) {
+			for (RobotInfo a : allies) {
+				if (rc.getLocation().distanceTo(a.location) <= 5 && a.type == RobotType.ARCHON) {
+					failures++;
+					return;
+				}
+			}
+		}
 		int initial = rand.nextInt(6);
 		for (int i = 0; i < 6; i++) {
 			Direction rotated = plantingDirections[(initial + i) % 6];

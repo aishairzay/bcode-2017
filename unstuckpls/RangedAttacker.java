@@ -288,9 +288,13 @@ public abstract strictfp class RangedAttacker extends Bot {
 		attackingArchon = false;
 		archonToAttack = null;
 		MapLocation toAttack = this.getToAttack(enemies);
+		float enemyHealth = 1000;
+		if (closest != null) {
+			enemyHealth = closest.health;
+		}
 
 		if (rc.hasMoved() && toAttack != null || (toAttack != null && dontMove)) {
-			this.attack(toAttack, attackingArchon, blankShot, enemies);
+			this.attack(toAttack, attackingArchon, blankShot, enemies, enemyHealth);
 		}
 
 		if (toAttack == null && bestLoc == null) {
@@ -302,9 +306,9 @@ public abstract strictfp class RangedAttacker extends Bot {
 			float diff = Math.abs(attackDir.degreesBetween(moveDir));
 			if (diff <= 90) {
 				rc.move(bestLoc);
-				attack(toAttack, attackingArchon, blankShot, enemies);
+				attack(toAttack, attackingArchon, blankShot, enemies, enemyHealth);
 			} else {
-				attack(toAttack, attackingArchon, blankShot, enemies);
+				attack(toAttack, attackingArchon, blankShot, enemies, enemyHealth);
 				rc.move(bestLoc);
 			}
 		}
@@ -313,7 +317,7 @@ public abstract strictfp class RangedAttacker extends Bot {
 		}
 		if (!rc.hasAttacked()) {
 			MapLocation afterMoveAttack = this.getToAttack(rc.senseNearbyRobots(myType.sensorRadius, enemyTeam));
-			this.attack(afterMoveAttack, attackingArchon, blankShot, enemies);
+			this.attack(afterMoveAttack, attackingArchon, blankShot, enemies, enemyHealth);
 		}
 
 		this.shake(rc.senseNearbyTrees(
@@ -334,8 +338,8 @@ public abstract strictfp class RangedAttacker extends Bot {
 
 	private boolean attackRotationDirectionIsRight = false;
 
-	private void attack(MapLocation attackLoc, boolean attackingArchon, boolean blankShot, RobotInfo[] enemies)
-			throws GameActionException {
+	private void attack(MapLocation attackLoc, boolean attackingArchon, boolean blankShot, RobotInfo[] enemies,
+			float enemyHealth) throws GameActionException {
 		if (attackLoc == null) {
 			return;
 		}
@@ -349,8 +353,8 @@ public abstract strictfp class RangedAttacker extends Bot {
 			}
 		}
 		this.lastAttackLoc = attackLoc;
-		boolean five = rc.getLocation().distanceTo(attackLoc) <= 5.5;
-		boolean three = rc.getLocation().distanceTo(attackLoc) <= 6.3;
+		boolean five = rc.getLocation().distanceTo(attackLoc) <= 5.0;
+		boolean three = rc.getLocation().distanceTo(attackLoc) <= 5.5 || enemyHealth > rc.getHealth();
 		if (attackingArchon && rc.getRoundNum() <= 300) {
 			return;
 		}

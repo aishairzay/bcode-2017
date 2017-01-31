@@ -60,14 +60,15 @@ public strictfp class Archon extends Bot {
 				count++;
 			}
 		}
-		if (count >= 3) {
-			rc.broadcast(Channels.SCOUT_NEEDED, Constants.MIN_SCOUT_DISTANCE + 1);
+		System.out.println("count is: " + count);
+		if (count >= 6) {
+			rc.broadcastFloat(Channels.SCOUT_NEEDED, Constants.MIN_SCOUT_FIRST_DISTANCE + 1);
+			needScout = true;
+		} else if (count >= 3) {
+			rc.broadcastFloat(Channels.SCOUT_NEEDED, Constants.MIN_SCOUT_DISTANCE + 1);
 			needScout = true;
 		} else if (count >= 1 && closestDist >= 25) {
-			rc.broadcast(Channels.SCOUT_NEEDED, Constants.MIN_SCOUT_DISTANCE + 1);
-			needScout = true;
-		} else if (count >= 20) {
-			rc.broadcast(Channels.SCOUT_NEEDED, Constants.MIN_SCOUT_DISTANCE + 1);
+			rc.broadcastFloat(Channels.SCOUT_NEEDED, Constants.MIN_SCOUT_DISTANCE + 1);
 			needScout = true;
 		}
 	}
