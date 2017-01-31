@@ -224,8 +224,6 @@ public strictfp abstract class Bot {
 		} else if (rc.getLocation().distanceTo(randomDest) > 2) {
 			unexploredSteps++;
 			this.moveTowards(randomDest);
-			rc.setIndicatorDot(randomDest, 0, 0, 240);
-			rc.setIndicatorLine(rc.getLocation(), randomDest, 0, 200, 200);
 		} else {
 			setRandomDest(includeTrees);
 			moveInUnexploredDirection(includeTrees);
@@ -332,7 +330,6 @@ public strictfp abstract class Bot {
 				break;
 			}
 			MapLocation next = iter.add(towardsEnemy, (float) 1.1);
-			rc.setIndicatorLine(iter, next, 0, 200, 0);
 			iter = iter.add(towardsEnemy, (float) 1.0);
 		}
 		if (!rc.canSenseLocation(iter)) {
@@ -341,17 +338,12 @@ public strictfp abstract class Bot {
 		}
 		TreeInfo t = rc.senseTreeAtLocation(iter);
 		if (t != null) {
-			rc.setIndicatorDot(iter, 0, 0, 200);
 			boolean distanceToAttack = source.distanceTo(toAttack.location) <= 1;
 			// System.out.println("Distance to attack: " + distanceToAttack);
 			return distanceToAttack;
 		}
 		boolean bulletPathIsClear = dest.distanceTo(iter) <= toAttack.type.bodyRadius;
-		if (bulletPathIsClear) {
-			rc.setIndicatorDot(iter, 0, 200, 0);
-		} else {
-			rc.setIndicatorDot(iter, 200, 0, 0);
-		}
+
 		return bulletPathIsClear;
 	}
 

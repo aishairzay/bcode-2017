@@ -285,9 +285,6 @@ public abstract strictfp class RangedAttacker extends Bot {
 				this.moveInUnexploredDirection(false);
 			}
 		}
-		if (destination != null) {
-			rc.setIndicatorLine(rc.getLocation(), destination, 100, 100, 100);
-		}
 
 		attackingArchon = false;
 		archonToAttack = null;
@@ -397,8 +394,6 @@ public abstract strictfp class RangedAttacker extends Bot {
 			}
 			attackRotationDirectionIsRight = !attackRotationDirectionIsRight;
 		}
-		rc.setIndicatorLine(rc.getLocation(), rc.getLocation().add(toEnemy, distance), 250, 250, 250);
-		rc.setIndicatorDot(attackLoc, 150, 150, 150);
 		if (five && rc.canFirePentadShot()) {
 			rc.firePentadShot(toEnemy);
 		} else if (three && rc.canFireTriadShot()) {
