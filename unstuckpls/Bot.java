@@ -170,17 +170,17 @@ public strictfp abstract class Bot {
 		float best = 300;
 		for (Direction dir : directions) {// lowest score is best here
 			float score = 10;
-			MapLocation potential = rc.getLocation().add(dir, (float) ((dist / 2) - 0.2));
+			MapLocation potential = rc.getLocation().add(dir, (float) ((dist / 2) - 0.1));
 			if (!rc.onTheMap(potential)) {
 				continue;
 			}
-			if (myType.equals(RobotType.SOLDIER))
-				if ((myType.equals(RobotType.GARDENER) || myType.equals(RobotType.SOLDIER))
-						&& !rc.onTheMap(potential, dist / 2)) {
-					score += 10;
-				} else if (myType.equals(RobotType.ARCHON) && !rc.onTheMap(potential, 2)) {
-					score += 10;
-				}
+			if ((myType.equals(RobotType.GARDENER) || myType.equals(RobotType.SOLDIER))
+					&& !rc.onTheMap(potential, dist / 2)) {
+				score += 10;
+				System.out.println("This ruined my score :(");
+			} else if (myType.equals(RobotType.ARCHON) && !rc.onTheMap(potential, 2)) {
+				score += 10;
+			}
 			score += rc.senseNearbyRobots(potential, dist / 2, null).length;
 			if (myType.equals(RobotType.SOLDIER) || myType.equals(RobotType.TANK)) {
 				int enemies = rc.senseNearbyTrees(potential, dist / 2, enemyTeam).length;
@@ -200,6 +200,7 @@ public strictfp abstract class Bot {
 				}
 			}
 		}
+		System.out.println("Score at random dest: " + best);
 		unexploredSteps = 0;
 		randomDest = dest;
 	}
@@ -218,6 +219,8 @@ public strictfp abstract class Bot {
 		} else if (rc.getLocation().distanceTo(randomDest) > 2) {
 			unexploredSteps++;
 			this.moveTowards(randomDest);
+			rc.setIndicatorDot(randomDest, 0, 0, 240);
+			rc.setIndicatorLine(rc.getLocation(), randomDest, 0, 200, 200);
 		} else {
 			setRandomDest(includeTrees);
 			moveInUnexploredDirection(includeTrees);
@@ -476,8 +479,6 @@ public strictfp abstract class Bot {
 	}
 
 	private MapLocation bug(int failures) throws GameActionException {
-		// System.out.println("Bug called with failures: " + failures);
-		// System.out.println("Bug dir: " + cur);
 		if (failures >= 20) {
 			return null;
 		}
@@ -490,6 +491,7 @@ public strictfp abstract class Bot {
 				while (rc.canMove(cur, stride)) {
 					if (i >= 20) {
 						reset(dest);
+						rotationDir = !rotationDir;
 						break;
 					}
 					i++;
@@ -527,7 +529,6 @@ public strictfp abstract class Bot {
 				reset(dest);
 				MapLocation next = rc.getLocation().add(towards, stride);
 				return next;
-				// rc.move(towards);
 			} else {
 				onWall = true;
 				return bug(failures + 1);
@@ -538,17 +539,17 @@ public strictfp abstract class Bot {
 
 	private Direction rotateRight(Direction dir) {
 		if (rotationDir) {
-			return dir.rotateRightDegrees((float) 5);
+			return dir.rotateRightDegrees((float) 22.5);
 		} else {
-			return dir.rotateLeftDegrees((float) 5);
+			return dir.rotateLeftDegrees((float) 22.5);
 		}
 	}
 
 	private Direction rotateLeft(Direction dir) {
 		if (rotationDir) {
-			return dir.rotateLeftDegrees((float) 5);
+			return dir.rotateLeftDegrees((float) 22.5);
 		} else {
-			return dir.rotateRightDegrees((float) 5);
+			return dir.rotateRightDegrees((float) 22.5);
 		}
 	}
 

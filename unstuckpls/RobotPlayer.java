@@ -69,13 +69,7 @@ public strictfp class RobotPlayer {
 				} catch (Exception e) {
 					e.printStackTrace();
 				}
-				int endRound = rc.getRoundNum();
-				if (endRound > currentRound) {
-					// System.out.println("This bot went above its bytecode
-					// limits!");
-				}
-				// System.out.println("have this many bytecodes left: " +
-				// Clock.getBytecodesLeft());
+
 				Clock.yield();
 			}
 		} catch (Exception e) {

@@ -288,8 +288,8 @@ public abstract strictfp class RangedAttacker extends Bot {
 		attackingArchon = false;
 		archonToAttack = null;
 		MapLocation toAttack = this.getToAttack(enemies);
-		float enemyHealth = 1000;
-		if (closest != null) {
+		float enemyHealth = 0;
+		if (closest != null && closest.type == RobotType.SOLDIER || closest.type == RobotType.TANK) {
 			enemyHealth = closest.health;
 		}
 
