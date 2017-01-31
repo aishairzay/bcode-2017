@@ -269,13 +269,11 @@ public strictfp abstract class Bot {
 		int bytecodeStart = Clock.getBytecodeNum();
 		primaryScore = 0;
 		secondaryScore = 0;
-		int bulletCount = 0;
 
 		for (int i = 0; i < bullets.length; i++) {
 			if (Clock.getBytecodeNum() - bytecodeStart >= bytecodeLimit) {
 				break;
 			}
-			bulletCount++;
 			BulletInfo bullet = bullets[i];
 
 			float perpDistance = bulletWillCollide(bullet, loc, myType.bodyRadius);
