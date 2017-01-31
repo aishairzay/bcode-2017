@@ -20,6 +20,24 @@ public strictfp class Archon extends Bot {
 		super(rc);
 		gardenerCount = 1;
 		isLeader = home.equals(rc.getLocation());
+		int myIndex = 0;
+		for (int i = 0; i < allyArchons.length; i++) {
+			MapLocation ally = allyArchons[i];
+			if (rc.getLocation().equals(ally) || rc.getLocation().distanceTo(ally) < 2) {
+				myIndex = i;
+				break;
+			}
+		}
+		boolean canMove = false;
+		for (Direction dir : directions) {
+			if (rc.canHireGardener(dir)) {
+				canMove = true;
+				break;
+			}
+		}
+		if (!canMove) {
+			rc.broadcast(Channels.ARCHON_IGNORE_LIST + myIndex, 1);
+		}
 	}
 
 	public void run() throws GameActionException {

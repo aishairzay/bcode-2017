@@ -66,7 +66,7 @@ public strictfp class Gardener extends Bot {
 
 	private void build(TreeInfo[] neutralTrees, RobotInfo[] allies, RobotInfo[] enemies, BulletInfo[] bullets)
 			throws GameActionException {
-		int allyCount = 0, enemyCount = 0, localRangedCount = 0, enemyScoutCount = 0;
+		int allyCount = 0, enemyCount = 0, localRangedCount = 0, enemyScoutCount = 0, healthyLocalRangedCount = 0;
 		float enemyDistForScoutSpawn = rc.readBroadcastFloat(Channels.SCOUT_NEEDED);
 		System.out.println("Got this scout need score: " + enemyDistForScoutSpawn);
 		for (RobotInfo enemy : enemies) {
@@ -81,6 +81,9 @@ public strictfp class Gardener extends Bot {
 			if (Helper.isHostile(ally.type) && ally.type != RobotType.SCOUT) {
 				allyCount++;
 				if (ally.type == RobotType.SOLDIER || ally.type == RobotType.TANK) {
+					if (ally.health >= RobotType.SOLDIER.maxHealth) {
+						healthyLocalRangedCount++;
+					}
 					localRangedCount++;
 				}
 			}
@@ -119,10 +122,11 @@ public strictfp class Gardener extends Bot {
 		}
 
 		if (soldiersNeeded > 0 && first) {
+			System.out.println("-1");
 			if (this.buildUnit(RobotType.SOLDIER)) {
 				soldiersNeeded--;
 			}
-			System.out.println("Wanted to build soldiers");
+			// System.out.println("Wanted to build soldiers");
 			return;
 		}
 		boolean shouldBuildUnit = (enemyCount > 0 && enemyCount >= allyCount);
@@ -130,12 +134,14 @@ public strictfp class Gardener extends Bot {
 			if (enemyScoutCount == enemyCount) {
 				this.buildUnit(RobotType.LUMBERJACK);
 			} else {
+				System.out.println("0");
 				this.buildUnit(RobotType.SOLDIER);
 			}
 			return;
 		}
 		boolean inPotentialDanger = bullets.length >= 3;
 		if (inPotentialDanger) {
+			System.out.println("1");
 			this.buildUnit(RobotType.SOLDIER);
 			return;
 		}
@@ -150,10 +156,10 @@ public strictfp class Gardener extends Bot {
 		}
 
 		boolean needLumberjack = false;
-		if ((blockingNeutralTrees >= 1 && openSquares <= 1) || treeHasRanged || robotContainedTrees > 2) {
+		if ((blockingNeutralTrees >= 1 && openSquares <= 1) || treeHasRanged || robotContainedTrees > 2
+				|| healthyLocalRangedCount >= 2) {
 			needLumberjack = true;
 		}
-		System.out.println("Need lumberjack: " + needLumberjack);
 		if (needLumberjack && rc.getRoundNum() - this.lumberjackCooldown >= 70) {
 			if (this.buildUnit(RobotType.LUMBERJACK)) {
 				this.lumberjackCooldown = rc.getRoundNum();
@@ -161,8 +167,8 @@ public strictfp class Gardener extends Bot {
 			return;
 		}
 		System.out.println("Ranged count is: " + this.rangedCount);
-
 		if (this.rangedCount <= 1) {
+			System.out.println("2");
 			this.buildUnit(RobotType.SOLDIER);
 		} else if (openSquares > 1) {
 			this.plantTree(allies);
@@ -176,6 +182,7 @@ public strictfp class Gardener extends Bot {
 			if (localRangedCount > 0) {
 				return;
 			}
+			System.out.println("3");
 			this.buildUnit(RobotType.SOLDIER);
 		}
 	}

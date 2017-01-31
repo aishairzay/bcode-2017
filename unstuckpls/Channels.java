@@ -13,6 +13,8 @@ public strictfp class Channels {
 	public static final Integer EAST_BOUNDARY = 22;
 	public static final Integer SOUTH_BOUNDARY = 23;
 
+	public static final Integer ARCHON_IGNORE_LIST = 50; // 50-53 used here.
+
 	public static final Integer BUILT_FIRST_GARDENER = 10;
 	public static final Integer GLOBAL_ENEMY_LOC = 15;// 16 taken too then
 

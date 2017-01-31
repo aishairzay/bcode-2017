@@ -18,7 +18,7 @@ public abstract strictfp class RangedAttacker extends Bot {
 	boolean assignedToArchon;
 	private int gardenerCount;
 
-	public RangedAttacker(RobotController rc) {
+	public RangedAttacker(RobotController rc) throws GameActionException {
 		super(rc);
 		defender = false;
 		reachedEnemyLoc = false;
@@ -26,6 +26,13 @@ public abstract strictfp class RangedAttacker extends Bot {
 		assignedToArchon = false;
 		roundsAlive = 0;
 		archonAssignedLimit = 75;
+		for (int i = 0; i < allyArchons.length; i++) {
+			int visited = rc.readBroadcast(Channels.ARCHON_IGNORE_LIST + i);
+			if (visited > 0) {
+				archonLocReached[i] = true;
+			}
+		}
+		this.gardenerCount = 0;
 	}
 
 	public void getGardenerCount() throws GameActionException {
@@ -81,7 +88,6 @@ public abstract strictfp class RangedAttacker extends Bot {
 			return;
 		}
 		this.globalEnemyLoc = Helper.getLocation(rc, Channels.GLOBAL_ENEMY_LOC);
-		this.gardenerCount = 0;
 	}
 
 	@Override
@@ -174,6 +180,7 @@ public abstract strictfp class RangedAttacker extends Bot {
 
 		RobotInfo lastSeenClosest = closest;
 
+		boolean defendingGardener = false;
 		boolean dontMove = false;
 		if (attack && hostileEnemyCount == 0 && closest != null) {
 			MapLocation before = rc.getLocation();
@@ -199,7 +206,6 @@ public abstract strictfp class RangedAttacker extends Bot {
 		} else if (length > 0) {
 			System.out.println("Microing.");
 			if (!this.shouldStayStill) {
-				boolean defendingGardener = false;
 				for (RobotInfo ally : allies) {
 					if (ally.type == RobotType.GARDENER) {
 						defendingGardener = true;
@@ -292,7 +298,7 @@ public abstract strictfp class RangedAttacker extends Bot {
 		}
 
 		if (rc.hasMoved() && toAttack != null || (toAttack != null && dontMove)) {
-			this.attack(toAttack, attackingArchon, blankShot, enemies, enemyHealth);
+			this.attack(toAttack, attackingArchon, blankShot, enemies, enemyHealth, defendingGardener);
 		}
 
 		if (toAttack == null && bestLoc == null) {
@@ -304,9 +310,9 @@ public abstract strictfp class RangedAttacker extends Bot {
 			float diff = Math.abs(attackDir.degreesBetween(moveDir));
 			if (diff <= 90) {
 				rc.move(bestLoc);
-				attack(toAttack, attackingArchon, blankShot, enemies, enemyHealth);
+				attack(toAttack, attackingArchon, blankShot, enemies, enemyHealth, defendingGardener);
 			} else {
-				attack(toAttack, attackingArchon, blankShot, enemies, enemyHealth);
+				attack(toAttack, attackingArchon, blankShot, enemies, enemyHealth, defendingGardener);
 				rc.move(bestLoc);
 			}
 		}
@@ -315,7 +321,7 @@ public abstract strictfp class RangedAttacker extends Bot {
 		}
 		if (!rc.hasAttacked()) {
 			MapLocation afterMoveAttack = this.getToAttack(rc.senseNearbyRobots(myType.sensorRadius, enemyTeam));
-			this.attack(afterMoveAttack, attackingArchon, blankShot, enemies, enemyHealth);
+			this.attack(afterMoveAttack, attackingArchon, blankShot, enemies, enemyHealth, defendingGardener);
 		}
 
 		this.shake(rc.senseNearbyTrees(
@@ -337,7 +343,7 @@ public abstract strictfp class RangedAttacker extends Bot {
 	private boolean attackRotationDirectionIsRight = false;
 
 	private void attack(MapLocation attackLoc, boolean attackingArchon, boolean blankShot, RobotInfo[] enemies,
-			float enemyHealth) throws GameActionException {
+			float enemyHealth, boolean defendingGardener) throws GameActionException {
 		if (attackLoc == null) {
 			return;
 		}
@@ -351,17 +357,28 @@ public abstract strictfp class RangedAttacker extends Bot {
 			}
 		}
 		this.lastAttackLoc = attackLoc;
-		boolean five = rc.getLocation().distanceTo(attackLoc) <= 5.0;
-		boolean three = rc.getLocation().distanceTo(attackLoc) <= 6;
-		if (attackingArchon && rc.getRoundNum() <= 300) {
+		float dist = rc.getLocation().distanceTo(attackLoc);
+		System.out.println("Distance is: " + dist);
+		boolean five = dist <= 5.0;
+		boolean three = dist <= 6;
+		if (attackingArchon && rc.getRoundNum() <= 400) {
 			return;
 		}
 		if (attackingArchon || shootSingles || blankShot) {
+			System.out.println("Set them to false");
 			three = false;
 			five = false;
 		}
+		System.out.println("This many gardeners rn: " + this.gardenerCount);
 		if (this.gardenerCount == 0) {
 			five = true;
+			three = true;
+		}
+		if (enemies.length >= 4) {
+			five = true;
+			three = true;
+		}
+		if (defendingGardener) {
 			three = true;
 		}
 		Direction toEnemy = rc.getLocation().directionTo(attackLoc);
