@@ -1,4 +1,4 @@
-package finale;
+package unstuckpls;
 
 public strictfp class Channels {
 	public static final Integer GARDENER_PING_CHANNEL = 1;
@@ -21,7 +21,7 @@ public strictfp class Channels {
 	 * not reuse these.
 	 */
 
-	public static int getIdChannel(int id) {
+	protected static int getIdChannel(int id) {
 		id = (id % 8000) + 1000;
 		return id;
 	}

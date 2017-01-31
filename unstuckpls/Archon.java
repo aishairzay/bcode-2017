@@ -1,4 +1,4 @@
-package finale;
+package unstuckpls;
 
 import battlecode.common.Direction;
 import battlecode.common.GameActionException;
@@ -60,11 +60,13 @@ public strictfp class Archon extends Bot {
 				count++;
 			}
 		}
-		System.out.println("Count is: " + count);
 		if (count >= 3) {
 			rc.broadcast(Channels.SCOUT_NEEDED, Constants.MIN_SCOUT_DISTANCE + 1);
 			needScout = true;
 		} else if (count >= 1 && closestDist >= 25) {
+			rc.broadcast(Channels.SCOUT_NEEDED, Constants.MIN_SCOUT_DISTANCE + 1);
+			needScout = true;
+		} else if (count >= 20) {
 			rc.broadcast(Channels.SCOUT_NEEDED, Constants.MIN_SCOUT_DISTANCE + 1);
 			needScout = true;
 		}
