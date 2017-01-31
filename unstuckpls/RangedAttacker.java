@@ -40,6 +40,8 @@ public abstract strictfp class RangedAttacker extends Bot {
 	public void getGardenerCount() throws GameActionException {
 		if ((rc.getRoundNum() % Constants.GARDENER_PING_RATE) == 1) {
 			gardenerCount = rc.readBroadcast(Channels.GARDENER_PING_CHANNEL);
+		} else if ((rc.getRoundNum() % Constants.GARDENER_PING_RATE) == 2) {
+			rc.broadcast(Channels.GARDENER_PING_CHANNEL, -1);
 		}
 	}
 
@@ -101,7 +103,7 @@ public abstract strictfp class RangedAttacker extends Bot {
 		BulletInfo[] bullets = rc.senseNearbyBullets();
 		RobotInfo[] enemies = rc.senseNearbyRobots(myType.sensorRadius, enemyTeam);
 		RobotInfo[] allies = rc.senseNearbyRobots(myType.sensorRadius, myTeam);
-		MapLocation[] locs = this.getSafestLocs(bullets, enemies, 10000);
+		MapLocation[] locs = this.getSafestLocs(bullets, enemies, 10500);
 
 		MapLocation destination = getDestination();
 
@@ -192,7 +194,6 @@ public abstract strictfp class RangedAttacker extends Bot {
 				MapLocation after = rc.getLocation();
 				if (after.distanceTo(closest.location) >= touchDistance + 2
 						&& before.distanceTo(closest.location) <= touchDistance + 2) {
-					System.out.println("Hard reset my bugging");
 					this.hardResetBug();
 				}
 			} else {
@@ -206,7 +207,6 @@ public abstract strictfp class RangedAttacker extends Bot {
 				this.moveInUnexploredDirection(0);
 			}
 		} else if (length > 0) {
-			System.out.println("Microing.");
 			if (!this.shouldStayStill) {
 				for (RobotInfo ally : allies) {
 					if (ally.type == RobotType.GARDENER) {
@@ -277,11 +277,8 @@ public abstract strictfp class RangedAttacker extends Bot {
 					}
 				}
 			}
-			System.out.println("Used dodge: bestloc is: " + bestLoc);
-
 		} else {
 			if (destination != null) {
-				System.out.println("Moving towards destination now");
 				this.moveTowards(destination);
 			} else {
 				this.moveInUnexploredDirection(false);
@@ -357,18 +354,15 @@ public abstract strictfp class RangedAttacker extends Bot {
 		}
 		this.lastAttackLoc = attackLoc;
 		float dist = rc.getLocation().distanceTo(attackLoc);
-		System.out.println("Distance is: " + dist);
 		boolean five = dist <= 5.0;
 		boolean three = dist <= 6;
 		if (attackingArchon && rc.getRoundNum() <= 400) {
 			return;
 		}
 		if (attackingArchon || shootSingles || blankShot) {
-			System.out.println("Set them to false");
 			three = false;
 			five = false;
 		}
-		System.out.println("This many gardeners rn: " + this.gardenerCount);
 		if (this.gardenerCount == 0) {
 			five = true;
 			three = true;
@@ -377,13 +371,14 @@ public abstract strictfp class RangedAttacker extends Bot {
 			five = true;
 			three = true;
 		}
-		if (defendingGardener || rc.getLocation().distanceTo(home) <= 10) {
+		if ((defendingGardener || rc.getLocation().distanceTo(home) <= 25 || (rc.getRoundNum() >= 200)) && !blankShot
+				&& !shootSingles) {
 			three = true;
 		}
 		Direction toEnemy = rc.getLocation().directionTo(attackLoc);
 		float distance = rc.getLocation().distanceTo(attackLoc);
 
-		float r = (float) (RobotType.SOLDIER.bodyRadius * 1.5);
+		float r = (float) (RobotType.SOLDIER.bodyRadius * 1.75);
 		if (blankShot && hostileEnemyCount == 0) {
 			r = RobotType.SOLDIER.bodyRadius;
 		}

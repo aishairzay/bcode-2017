@@ -140,8 +140,8 @@ public strictfp class Lumberjack extends Bot {
 				if (toChop == null) {
 					toChop = tree;
 				} else if (tree.containedRobot != null) {
+
 					toChop = tree;
-					break;
 				}
 			}
 		}

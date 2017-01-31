@@ -3,7 +3,7 @@ package unstuckpls;
 import battlecode.common.*;
 
 public strictfp class RobotPlayer {
-	private static float lastRoundBullets;
+	private static int lastRoundBullets;
 	private static boolean farming;
 	private static int roundsSameBullets;
 
@@ -28,7 +28,7 @@ public strictfp class RobotPlayer {
 			}
 			while (true) {
 				float bullets = rc.getTeamBullets();
-				if (bullets == lastRoundBullets) {
+				if ((int) bullets == lastRoundBullets) {
 					roundsSameBullets++;
 				} else {
 					roundsSameBullets = 0;

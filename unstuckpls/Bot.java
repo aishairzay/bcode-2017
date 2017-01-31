@@ -182,7 +182,6 @@ public strictfp abstract class Bot {
 			if ((myType.equals(RobotType.GARDENER) || myType.equals(RobotType.SOLDIER))
 					&& !rc.onTheMap(potential, dist / 2)) {
 				score += 10;
-				System.out.println("This ruined my score :(");
 			} else if (myType.equals(RobotType.ARCHON) && !rc.onTheMap(potential, 2)) {
 				score += 10;
 			}
@@ -205,7 +204,6 @@ public strictfp abstract class Bot {
 				}
 			}
 		}
-		System.out.println("Score at random dest: " + best);
 		unexploredSteps = 0;
 		randomDest = dest;
 	}
@@ -272,15 +270,12 @@ public strictfp abstract class Bot {
 		primaryScore = 0;
 		secondaryScore = 0;
 		int bulletCount = 0;
-		System.out.println("I can use this many bytecodes: " + bytecodeLimit);
 
 		for (int i = 0; i < bullets.length; i++) {
 			if (Clock.getBytecodeNum() - bytecodeStart >= bytecodeLimit) {
 				break;
 			}
 			bulletCount++;
-			// System.out.println("One iteration started: " +
-			// Clock.getBytecodeNum());
 			BulletInfo bullet = bullets[i];
 
 			float perpDistance = bulletWillCollide(bullet, loc, myType.bodyRadius);
@@ -293,7 +288,6 @@ public strictfp abstract class Bot {
 				}
 			}
 		}
-		System.out.println("Went through this many bullets: " + bulletCount);
 	}
 
 	protected boolean shootSingles;
@@ -338,7 +332,6 @@ public strictfp abstract class Bot {
 		TreeInfo t = rc.senseTreeAtLocation(iter);
 		if (t != null) {
 			boolean distanceToAttack = source.distanceTo(toAttack.location) <= 1;
-			// System.out.println("Distance to attack: " + distanceToAttack);
 			return distanceToAttack;
 		}
 		boolean bulletPathIsClear = dest.distanceTo(iter) <= toAttack.type.bodyRadius;
@@ -359,7 +352,6 @@ public strictfp abstract class Bot {
 			return new MapLocation[] {};
 		}
 		float stride = myType.strideRadius;
-		// System.out.println("My stride radius is: " + stride);
 		float minScore = -1;
 
 		for (int i = 0; i < 2; i++) {
@@ -423,6 +415,9 @@ public strictfp abstract class Bot {
 		if (failures >= 20) {
 			return;
 		}
+		if (rc.hasMoved()) {
+			return;
+		}
 		Direction towards = rc.getLocation().directionTo(dest);
 		if (onWall) {
 			if (rc.canMove(rotateRight(cur))) { // get off the wall
@@ -436,7 +431,7 @@ public strictfp abstract class Bot {
 					}
 					i++;
 					Direction rotate = rotateRight(cur);
-					if (cur.equals(towards, (float) 0.4)) {
+					if (cur.equals(towards, (float) 0.1964)) {
 						reset(dest);
 						bugWithoutReturn(failures + 1);
 					} else if (rc.canMove(rotate)) {
@@ -453,6 +448,7 @@ public strictfp abstract class Bot {
 				while (!rc.canMove(cur)) {
 					if (i >= 20) {
 						reset(dest);
+						rotationDir = !rotationDir;
 						break;
 					}
 					cur = rotateLeft(cur);

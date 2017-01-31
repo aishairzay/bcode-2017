@@ -66,9 +66,9 @@ public strictfp class Gardener extends Bot {
 
 	private void build(TreeInfo[] neutralTrees, RobotInfo[] allies, RobotInfo[] enemies, BulletInfo[] bullets)
 			throws GameActionException {
-		int allyCount = 0, enemyCount = 0, localRangedCount = 0, enemyScoutCount = 0, healthyLocalRangedCount = 0;
+		int allyCount = 0, enemyCount = 0, localRangedCount = 0, enemyScoutCount = 0, healthyLocalRangedCount = 0,
+				lumberjackCount = 0;
 		float enemyDistForScoutSpawn = rc.readBroadcastFloat(Channels.SCOUT_NEEDED);
-		System.out.println("Got this scout need score: " + enemyDistForScoutSpawn);
 		for (RobotInfo enemy : enemies) {
 			if (Helper.isHostile(enemy.type) && enemy.type != RobotType.GARDENER) {
 				enemyCount++;
@@ -79,6 +79,9 @@ public strictfp class Gardener extends Bot {
 		}
 		for (RobotInfo ally : allies) {
 			if (Helper.isHostile(ally.type) && ally.type != RobotType.SCOUT) {
+				if (ally.type == RobotType.LUMBERJACK) {
+					lumberjackCount++;
+				}
 				allyCount++;
 				if (ally.type == RobotType.SOLDIER || ally.type == RobotType.TANK) {
 					if (ally.health >= RobotType.SOLDIER.maxHealth) {
@@ -102,11 +105,7 @@ public strictfp class Gardener extends Bot {
 			}
 		}
 
-		System.out.println("Blocking neutral trees: " + blockingNeutralTrees);
-		System.out.println("Open spots nearby: " + openSquares);
-
 		if (enemyDistForScoutSpawn >= Constants.MIN_SCOUT_FIRST_DISTANCE) {
-			System.out.println("Trying to build a scout first");
 			if (this.buildUnit(RobotType.SCOUT)) {
 				rc.broadcastFloat(Channels.SCOUT_NEEDED, 0);
 			}
@@ -125,7 +124,6 @@ public strictfp class Gardener extends Bot {
 			if (this.buildUnit(RobotType.SOLDIER)) {
 				soldiersNeeded--;
 			}
-			// System.out.println("Wanted to build soldiers");
 			return;
 		}
 		boolean shouldBuildUnit = (enemyCount > 0 && enemyCount >= allyCount);
@@ -137,7 +135,7 @@ public strictfp class Gardener extends Bot {
 			}
 			return;
 		}
-		boolean inPotentialDanger = bullets.length >= 3;
+		boolean inPotentialDanger = bullets.length >= 3 && this.rangedCount < Constants.MAX_RANGED_COUNT;
 		if (inPotentialDanger) {
 			this.buildUnit(RobotType.SOLDIER);
 			return;
@@ -145,7 +143,6 @@ public strictfp class Gardener extends Bot {
 
 		if (enemyDistForScoutSpawn >= Constants.MIN_SCOUT_DISTANCE
 				&& enemyDistForScoutSpawn < Constants.MIN_SCOUT_FIRST_DISTANCE) {
-			System.out.println("Trying to build a scout");
 			if (this.buildUnit(RobotType.SCOUT)) {
 				rc.broadcastFloat(Channels.SCOUT_NEEDED, 0);
 			}
@@ -154,16 +151,19 @@ public strictfp class Gardener extends Bot {
 
 		boolean needLumberjack = false;
 		if ((blockingNeutralTrees >= 1 && openSquares <= 1) || treeHasRanged || robotContainedTrees > 2
-				|| healthyLocalRangedCount >= 2) {
+				|| (healthyLocalRangedCount >= 2 && neutralTrees.length > 1)) {
 			needLumberjack = true;
 		}
+		if (rc.getRoundNum() >= 280 && lumberjackCount >= 2) {
+			needLumberjack = false;
+		}
+
 		if (needLumberjack && rc.getRoundNum() - this.lumberjackCooldown >= 70) {
 			if (this.buildUnit(RobotType.LUMBERJACK)) {
 				this.lumberjackCooldown = rc.getRoundNum();
 			}
 			return;
 		}
-		System.out.println("Ranged count is: " + this.rangedCount);
 		if (this.rangedCount < 1) {
 			this.buildUnit(RobotType.SOLDIER);
 		} else if (openSquares > 1) {
@@ -272,10 +272,8 @@ public strictfp class Gardener extends Bot {
 		}
 
 		if ((rc.getRoundNum() % Constants.RANGED_PING_RATE) == 1) {
-			System.out.println("Read ping");
 			rangedCount = rc.readBroadcast(Channels.RANGED_PING_CHANNEL);
 		} else if (rc.getRoundNum() % Constants.RANGED_PING_RATE == 2) {
-			System.out.println("Clear ping");
 			rc.broadcast(Channels.RANGED_PING_CHANNEL, -1);
 		}
 	}

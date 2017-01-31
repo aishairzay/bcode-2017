@@ -85,7 +85,6 @@ public strictfp class Scout extends Bot {
 		MapLocation best = null;
 		for (MapLocation next : options) {
 			if (rc.canMove(next)) {
-				System.out.println("Next is: " + next);
 				if (best == null || bestScore == -1) {
 					bestScore = getDangerScore(next, closestHostile);
 					best = next;
@@ -119,7 +118,7 @@ public strictfp class Scout extends Bot {
 			}
 		}
 		if (rc.canMove(unexploredDir) || !rc.onTheMap(rc.getLocation().add(unexploredDir))) {
-			this.makeSafeMove(rc.getLocation().add(unexploredDir, 10), locs, closestHostile);
+			this.makeMove(unexploredDir);
 		} else {
 			unexploredDir = this.getRandomDirection();
 			moveInUnexploredDirection(tries + 1);
@@ -147,6 +146,11 @@ public strictfp class Scout extends Bot {
 		}
 		for (RobotInfo enemy : enemies) {
 			if ((type == null || enemy.type == type) && this.bulletPathClear(rc.getLocation(), enemy)) {
+				if (enemy.type != RobotType.GARDENER) {
+					if (rc.getLocation().distanceTo(enemy.location) >= 3) {
+						break;
+					}
+				}
 				closestEnemy = enemy;
 				break;
 			}
