@@ -178,13 +178,11 @@ public abstract strictfp class RangedAttacker extends Bot {
 		if (attack && hostileEnemyCount == 0 && closest != null) {
 			MapLocation before = rc.getLocation();
 			float touchDistance = closest.type.bodyRadius + myType.bodyRadius;
-			System.out.println("Attacking!");
-			if (before.distanceTo(closest.location) > touchDistance + 1) {
+			if (before.distanceTo(closest.location) > 2) {
 				this.moveTowards(closest.location);
 				MapLocation after = rc.getLocation();
-				System.out.println("Moving towards it!: " + (touchDistance + 3));
-				if (after.distanceTo(closest.location) >= touchDistance + 3
-						&& before.distanceTo(closest.location) <= touchDistance + 3) {
+				if (after.distanceTo(closest.location) >= touchDistance + 2
+						&& before.distanceTo(closest.location) <= touchDistance + 2) {
 					System.out.println("Hard reset my bugging");
 					this.hardResetBug();
 				}
