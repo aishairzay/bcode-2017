@@ -16,6 +16,7 @@ public abstract strictfp class RangedAttacker extends Bot {
 	private MapLocation localEnemyLoc;
 	private int archonAssignedLimit;
 	boolean assignedToArchon;
+	private MapLocation home;
 	private int gardenerCount;
 
 	public RangedAttacker(RobotController rc) throws GameActionException {
@@ -33,6 +34,7 @@ public abstract strictfp class RangedAttacker extends Bot {
 			}
 		}
 		this.gardenerCount = 0;
+		home = rc.getLocation();
 	}
 
 	public void getGardenerCount() throws GameActionException {
@@ -375,7 +377,7 @@ public abstract strictfp class RangedAttacker extends Bot {
 			five = true;
 			three = true;
 		}
-		if (defendingGardener) {
+		if (defendingGardener || rc.getLocation().distanceTo(home) <= 10) {
 			three = true;
 		}
 		Direction toEnemy = rc.getLocation().directionTo(attackLoc);

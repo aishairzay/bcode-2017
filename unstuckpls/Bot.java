@@ -329,7 +329,6 @@ public strictfp abstract class Bot {
 			if (t != null && t.team != enemyTeam) {
 				break;
 			}
-			MapLocation next = iter.add(towardsEnemy, (float) 1.1);
 			iter = iter.add(towardsEnemy, (float) 1.0);
 		}
 		if (!rc.canSenseLocation(iter)) {
@@ -406,11 +405,71 @@ public strictfp abstract class Bot {
 			return;
 		}
 		setDestination(dest);
-		MapLocation n = bug();
-		if (n != null) {
-			rc.move(n);
-		} else {
+		bugWithoutReturn();
+		if (!rc.hasMoved()) {
 			this.makeMove(rc.getLocation().directionTo(dest));
+		}
+	}
+
+	private void bugWithoutReturn() throws GameActionException {
+		if (!rc.onTheMap(rc.getLocation(), myType.bodyRadius + myType.strideRadius)) {
+			reset(this.dest);
+			rotationDir = !rotationDir;
+		}
+		bugWithoutReturn(0);
+	}
+
+	private void bugWithoutReturn(int failures) throws GameActionException {
+		if (failures >= 20) {
+			return;
+		}
+		Direction towards = rc.getLocation().directionTo(dest);
+		if (onWall) {
+			if (rc.canMove(rotateRight(cur))) { // get off the wall
+				cur = rotateRight(cur);
+				int i = 0;
+				while (rc.canMove(cur)) {
+					if (i >= 20) {
+						reset(dest);
+						rotationDir = !rotationDir;
+						break;
+					}
+					i++;
+					Direction rotate = rotateRight(cur);
+					if (cur.equals(towards, (float) 0.4)) {
+						reset(dest);
+						bugWithoutReturn(failures + 1);
+					} else if (rc.canMove(rotate)) {
+						cur = rotate;
+						continue;
+					} else {
+						bugWithoutReturn(failures + 1);
+					}
+				}
+			} else if (rc.canMove(cur)) { // move forward
+				rc.move(cur);
+			} else {
+				int i = 0;
+				while (!rc.canMove(cur)) {
+					if (i >= 20) {
+						reset(dest);
+						break;
+					}
+					cur = rotateLeft(cur);
+					i++;
+				}
+				if (rc.canMove(cur)) {
+					rc.move(cur);
+				}
+			}
+		} else {
+			if (rc.canMove(towards)) {
+				reset(dest);
+				rc.move(towards);
+			} else {
+				onWall = true;
+				bugWithoutReturn(failures + 1);
+			}
 		}
 	}
 

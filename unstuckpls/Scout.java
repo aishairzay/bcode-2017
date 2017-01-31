@@ -38,7 +38,6 @@ public strictfp class Scout extends Bot {
 			}
 		}
 		MapLocation dest = getClosestUnshookTree();
-		System.out.println("Closest tree is : " + dest);
 		MapLocation n = this.broadcastEnemy(enemies);
 		if ((dest == null || closestHostile == null) && n != null) {
 			dest = n;
@@ -55,7 +54,7 @@ public strictfp class Scout extends Bot {
 		}
 
 		if (!rc.hasMoved()) {
-			this.moveInUnexploredDirection(0);
+			this.moveInUnexploredDirection(0, locs, closestHostile);
 		}
 		attackEnemies(enemies, RobotType.GARDENER);
 		attackEnemies(enemies, RobotType.SCOUT);
@@ -104,11 +103,11 @@ public strictfp class Scout extends Bot {
 				}
 			}
 		}
-		System.out.println("Best score at the end: " + bestScore);
 		return best;
 	}
 
-	protected void moveInUnexploredDirection(int tries) throws GameActionException {
+	protected void moveInUnexploredDirection(int tries, MapLocation[] locs, RobotInfo closestHostile)
+			throws GameActionException {
 		if (tries == 8) {
 			return;
 		}
@@ -120,7 +119,7 @@ public strictfp class Scout extends Bot {
 			}
 		}
 		if (rc.canMove(unexploredDir) || !rc.onTheMap(rc.getLocation().add(unexploredDir))) {
-			makeMove(unexploredDir);
+			this.makeSafeMove(rc.getLocation().add(unexploredDir, 10), locs, closestHostile);
 		} else {
 			unexploredDir = this.getRandomDirection();
 			moveInUnexploredDirection(tries + 1);
